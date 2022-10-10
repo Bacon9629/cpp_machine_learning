@@ -111,7 +111,7 @@ public:
         return result_matrix;
     }
 
-    inline static Matrix multiplication(Matrix *matrix_a, Matrix *matrix_b){
+    inline static Matrix times(Matrix *matrix_a, Matrix *matrix_b){
         Matrix result(matrix_a->row(), matrix_a->col(), 0);
         for (int i=0;i<result.row();i++){
             for (int j=0;j<result.col();j++){
@@ -121,7 +121,7 @@ public:
         return result;
     }
 
-    inline static Matrix multiplication(Matrix *matrix, double val){
+    inline static Matrix times(Matrix *matrix, double val){
         Matrix val_matrix(matrix->row(), matrix->col(), val);
         Matrix result_matrix(Matrix::multiplication(matrix, &val_matrix));
         return result_matrix;

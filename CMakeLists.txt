@@ -12,5 +12,4 @@ add_executable(test
 )
 
 add_executable(class_work
-        class_work/0929/0929_simple_NN.cpp
-)
+        class_work/1006/1006_back_propagation.cpp class_work/1006/1006_mmt.cpp)

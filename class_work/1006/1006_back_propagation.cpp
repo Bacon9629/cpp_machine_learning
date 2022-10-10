@@ -232,9 +232,6 @@ public:
 
 };
 
-
-// loss function - start
-
 class LossFunc{
 public:
     virtual double forward(Matrix &y, Matrix &target) = 0;
@@ -260,22 +257,6 @@ public:
         return Matrix::reduce(&y, &target);
     }
 };
-
-class CrossEntropy: public LossFunc{
-public:
-    double forward(Matrix &y, Matrix &target) override {
-        return 0;
-    }
-
-    Matrix backward(Matrix &y, Matrix &target) override {
-        return Matrix();
-    }
-};
-
-// loss function - end
-
-
-// active function - start
 
 class ActiveFunc{
 public:
@@ -305,81 +286,6 @@ public:
     }
 };
 
-// active function - end
-
-
-// Optimizer - start
-
-class Optimizer{
-public:
-    virtual void gradient_decent(Matrix &w, Matrix &b, Matrix &grad_w, Matrix &grad_b) = 0;
-};
-
-class XOR: public Optimizer{
-public:
-    double eta;
-
-    XOR(double _eta){
-        eta = _eta;
-    }
-
-    void gradient_decent(Matrix &w, Matrix &b, Matrix &grad_w, Matrix &grad_b) override {
-        double _temp = eta / w.row();
-
-        Matrix temp_w = Matrix::times(&grad_w, _temp);
-        w = Matrix::reduce(&w, &temp_w);
-
-        Matrix temp_b = Matrix::times(&grad_b, _temp);
-        b = Matrix::reduce(&b, &temp_b);
-    }
-
-};
-
-class MMT: public Optimizer{
-public:
-    double eta;
-    double beta = 0.9;
-    Matrix last_grad_w = Matrix();
-    Matrix last_grad_b = Matrix();
-
-    MMT(double _eta){
-        init(_eta, 0.9);
-    }
-
-    MMT(double _eta, double _beta){
-        init(_eta, _beta);
-    }
-
-    void init(double _eta, double _beta){
-        eta = _eta;
-        beta = _beta;
-    }
-
-    void gradient_decent(Matrix &w, Matrix &b, Matrix &grad_w, Matrix &grad_b) override {
-//        last_grad_w =  alpha * grad_w + beta * last_grad_w;
-//        w -= last_grad_w;
-        if (last_grad_w.row() == 0){
-            last_grad_w = Matrix(grad_w.row(), grad_w.col(), 0);
-            last_grad_b = Matrix(grad_b.row(), grad_b.col(), 0);
-        }
-
-        Matrix temp_a = Matrix::times(&grad_w, eta);
-        Matrix temp_b = Matrix::times(&last_grad_w, beta);
-        last_grad_w = Matrix::add(&temp_a, &temp_b);
-        w = Matrix::reduce(&w, &last_grad_w);
-
-        temp_a = Matrix::times(&grad_b, eta);
-        temp_b = Matrix::times(&last_grad_b, beta);
-        last_grad_b = Matrix::add(&temp_a, &temp_b);
-        b = Matrix::reduce(&b, &last_grad_b);
-
-    }
-
-};
-
-// Optimizer - end
-
-
 class Layer{
 public:
     Matrix x;  // 輸入
@@ -392,11 +298,10 @@ public:
     Matrix grad_b;
 
     ActiveFunc *active_func;
-    Optimizer *optimizer;
 
     virtual Matrix forward(Matrix x) = 0;
     virtual Matrix backward(Matrix _delta) = 0;
-    virtual void update() = 0;
+    virtual void update(double eta) = 0;
 };
 
 class DenseLayer : public Layer{
@@ -410,19 +315,18 @@ public:
 
 //    double alpha;  // 學習率
 
-    DenseLayer(size_t input_size, size_t output_size, ActiveFunc *_activeFunc, Optimizer *_optimizer){
-        init(input_size, output_size, _activeFunc, _optimizer);
+    DenseLayer(size_t input_size, size_t output_size, ActiveFunc *activeFunc){
+        init(input_size, output_size, activeFunc);
     }
 
-    void init(size_t input_size, size_t output_size, ActiveFunc *_activeFunc, Optimizer *_optimizer){
+    void init(size_t input_size, size_t output_size, ActiveFunc *activeFunc){
         w = Matrix(input_size, output_size, 0);
         w.random_matrix();
         b = Matrix(1, output_size, 0);
         b.random_matrix();
         grad_w = Matrix(w.row(), w.col(), 0);
         grad_b = Matrix(b.row(), b.col(), 0);
-        active_func = _activeFunc;
-        optimizer = _optimizer;
+        active_func = activeFunc;
     }
 
     Matrix forward(Matrix _x) override{
@@ -434,12 +338,8 @@ public:
     }
 
     Matrix backward(Matrix _delta) override{
+        // 反向傳播的active function該如何處理好呢
 //         x.T dot (_delta * active_func->func_backward(x))
-
-        // 初始化gradient_w and b
-        grad_w = Matrix(grad_w.row(), grad_w.col(), 0);
-        grad_b = Matrix(grad_b.row(), grad_b.col(), 0);
-
         Matrix active_func_back = active_func->func_backward(u);
         Matrix my_delta = Matrix::times(&_delta, &active_func_back);
 
@@ -456,22 +356,26 @@ public:
         return delta;
     }
 
-    void update() override{
-////        w - a(w)
-//        double _temp = eta / x.row();
-//
-////        grad_w.print_matrix();
-//        Matrix temp_w = Matrix::times(&grad_w, _temp);
-//
-////        cout << "temp_w:" << endl;
-////        temp_w.print_matrix();
-//
-//        w = Matrix::reduce(&w, &temp_w);
-//
-//        Matrix temp_b = Matrix::times(&grad_b, _temp);
-//        b = Matrix::reduce(&b, &temp_b);
+    void update(double eta) override{
+//        w - a(w)
+        double _temp = eta / x.row();
 
-        optimizer->gradient_decent(w, b, grad_w, grad_b);
+//        grad_w.print_matrix();
+        Matrix temp_w = Matrix::times(&grad_w, _temp);
+
+//        cout << "temp_w:" << endl;
+//        temp_w.print_matrix();
+
+        w = Matrix::reduce(&w, &temp_w);
+
+        Matrix temp_b = Matrix::times(&grad_b, _temp);
+        b = Matrix::reduce(&b, &temp_b);
+
+        grad_w = Matrix(grad_w.row(), grad_w.col(), 0);
+        grad_b = Matrix(grad_b.row(), grad_b.col(), 0);
+
+
+//        w.print_matrix();
 
     }
 
@@ -492,24 +396,27 @@ public:
     }
 
     ~MyFrame(){
-        // 這裡是這樣寫嗎?
+        size_t size = layers.size();
+        for (size_t i = 0; i < size; ++i) {
+            delete layers[i];
+        }
         layers.clear();
-        layers = vector<Layer*>();
+
     }
 
     void add(Layer *layer){
         layers.push_back(layer);
     }
 
-    void train(size_t epoch, Matrix &x, Matrix &target){  // 這裡擴充batch size
-        for (size_t time=0;time<epoch;time++){
+    void train(size_t epoch, Matrix &x, Matrix &target){
+        for (size_t time = 0; time < epoch; ++time){
             train_one_time(x, target);
         }
     }
 
-    inline void train_one_time(Matrix &x, Matrix &target){  // 這裡客製化網路輸入
+    inline void train_one_time(Matrix &x, Matrix &target){
         Matrix y = x;
-        for (size_t i=0;i<layers.size();++i){
+        for (size_t i = 0; i < layers.size(); ++i){
             y = layers[i]->forward(y);
         }
 
@@ -519,7 +426,7 @@ public:
         }
 
         for (size_t i = 0; i < layers.size(); ++i){
-            layers[i]->update();
+            layers[i]->update(eta);
         }
     }
 
@@ -542,10 +449,6 @@ public:
 };
 
 int main() {
-//    ALayer aLayer = ALayer(3, 1, new Sigmoid);
-
-//    vector<vector<double>> temp_x = {{0, 1}, {1, 1}};
-//    vector<vector<double>> temp_target = {{0}, {1}};
 
     vector<vector<double>> temp_x = {{0, 0, 1}, {0, 1, 1}, {1, 0, 1}, {1, 1, 1}};
     vector<vector<double>> temp_target = {{0}, {1}, {1}, {0}};
@@ -559,11 +462,8 @@ int main() {
 
     MyFrame frame = MyFrame(&loss_func, 0.9, -1);
 
-    frame.add(new DenseLayer(3, 5, &sigmoid, new MMT(0.9)));
-    frame.add(new DenseLayer(5, 1, &sigmoid, new MMT(0.9)));
-
-//    frame.add(new DenseLayer(3, 5, &sigmoid, new XOR(0.9)));
-//    frame.add(new DenseLayer(5, 1, &sigmoid, new XOR(0.9)));
+    frame.add(new DenseLayer(3, 5, &sigmoid));
+    frame.add(new DenseLayer(5, 1, &sigmoid));
 
     frame.train(4000, x, target);
 
