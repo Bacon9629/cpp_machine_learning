@@ -31,6 +31,16 @@ public:
         return _matrix->matrix[0].size();
     }
 
+    // 取 start 到 end - 1 的row
+    inline static Matrix getRow(Matrix &_matrix, size_t start, size_t end){
+        if (end > _matrix.row() || start < 0){
+            cout << "shape_wrong: Matrix getRow, start: " << start
+            << "  , end: " << end << endl;
+        }
+        vector<vector<double>> result(_matrix.matrix.begin() + start, _matrix.matrix.begin() + end);
+        return Matrix(result);
+    }
+
     static Matrix dot(Matrix *matrix_a, Matrix *matrix_b){
         size_t row_a = Matrix::row(matrix_a);
         size_t col_a = Matrix::col(matrix_a);
@@ -264,11 +274,29 @@ public:
 class CrossEntropy: public LossFunc{
 public:
     double forward(Matrix &y, Matrix &target) override {
-        return 0;
+        double result = 0;
+        for (size_t i = 0; i< y.row(); i++){
+            for (size_t j = 0; j < y.col(); j++){
+                double _y = y.matrix[i][j];
+                double _target = target.matrix[i][j];
+                result += -_target * log(_y) - (1 - _target) * log(1 - _y);
+            }
+        }
+        return result;
     }
 
     Matrix backward(Matrix &y, Matrix &target) override {
-        return Matrix();
+        Matrix result(y.row(), y.col(), 0);
+
+        for (size_t i = 0; i< y.row(); i++){
+            for (size_t j = 0; j < y.col(); j++){
+                double _y = y.matrix[i][j];
+                double _target = target.matrix[i][j];
+                result.matrix[i][j] = (_y - _target) / (_y * (1 - _y));
+            }
+        }
+
+        return result;
     }
 };
 
@@ -292,6 +320,7 @@ public:
         for (int i = 0; i< x.row(); i++){
             for (int j = 0; j< x.col(); j++) {
                 result.matrix[i][j] = 1 / (1 + exp(-x.matrix[i][j]));
+
             }
         }
         return result;
@@ -304,6 +333,41 @@ public:
         return Matrix::times(&a, &b);
     }
 };
+
+class Tanh:public ActiveFunc{
+public:
+    Matrix func_forward(Matrix x) override {
+        Matrix result(x.row(), x.col(), 0);
+
+        for (int i = 0; i< x.row(); i++){
+            for (int j = 0; j< x.col(); j++) {
+                double a = exp(x.matrix[i][j]);
+                double b = exp(-x.matrix[i][j]);
+//                double c = (a - b) / (b - a);
+                result.matrix[i][j] = (a - b) / (b - a);
+            }
+        }
+        return result;
+    }
+
+    Matrix func_backward(Matrix x) override {
+        Matrix result(x.row(), x.col(), 0);
+
+        for (int i = 0; i< x.row(); i++){
+            for (int j = 0; j< x.col(); j++) {
+                double a = exp(x.matrix[i][j]);
+                double b = exp(-x.matrix[i][j]);
+                double c = (a - b) / (b - a);
+                result.matrix[i][j] = 1 - c * c;
+            }
+        }
+
+
+        return result;
+    }
+
+};
+
 
 // active function - end
 
@@ -480,14 +544,12 @@ public:
 class MyFrame{
     vector<Layer*> layers = vector<Layer*>(0);
     LossFunc *lossFunc;
-    double eta;  // 學習率
     int batch;
 
 public:
 
-    MyFrame(LossFunc *_lossFun, double _eta, int _batch){
+    MyFrame(LossFunc *_lossFun, int _batch){
         lossFunc = _lossFun;
-        eta = _eta;
         batch = _batch;
     }
 
@@ -502,8 +564,31 @@ public:
     }
 
     void train(size_t epoch, Matrix &x, Matrix &target){  // 這裡擴充batch size
-        for (size_t time=0;time<epoch;time++){
-            train_one_time(x, target);
+        size_t _batch = batch == -1 ? x.row() : batch;
+
+        for (size_t i = 0; i < epoch; i++){
+            size_t data_left_size = x.row();  // 存著還有幾筆資料需要訓練
+//            train_one_time(x, target);
+//            continue;
+
+            for (size_t j = 0; data_left_size > 0 ; j++){
+                if (data_left_size < _batch){
+                    // 如果資料量"不足"填滿一個batch
+                    Matrix _x = Matrix::getRow(x, j * _batch, j * _batch + data_left_size);
+                    Matrix _target = Matrix::getRow(target, j * _batch, j * _batch + data_left_size);
+
+                    train_one_time(_x, _target);
+                    data_left_size = 0;
+                }else{
+                    // 如果資料量"足夠"填滿一個batch
+                    Matrix _x = Matrix::getRow(x, j * _batch, j * _batch + _batch);
+                    Matrix _target = Matrix::getRow(target, j * _batch, j * _batch + _batch);
+
+                    train_one_time(_x, _target);
+                    data_left_size -= _batch;
+                }
+
+            }
         }
     }
 
@@ -512,7 +597,6 @@ public:
         for (size_t i=0;i<layers.size();++i){
             y = layers[i]->forward(y);
         }
-
         Matrix delta = lossFunc->backward(y, target);
         for (int i = layers.size() - 1; i >= 0; --i){
             delta = layers[i]->backward(delta);
@@ -551,19 +635,53 @@ int main() {
     vector<vector<double>> temp_target = {{0}, {1}, {1}, {0}};
 //    vector<vector<double>> temp_target = {{0, 1}, {0, 1}, {1, 0}, {1, 0}};
 
+    // data init
     Matrix x = Matrix(temp_x);
     Matrix target = Matrix(temp_target);
 
+    // active func
     Sigmoid sigmoid = Sigmoid();
-    MSE loss_func = MSE();
+    Tanh tanh = Tanh();
 
-    MyFrame frame = MyFrame(&loss_func, 0.9, -1);
+    // loss func
+//    MSE mse = MSE();
+//    CrossEntropy crossEntropy = CrossEntropy();
 
-    frame.add(new DenseLayer(3, 5, &sigmoid, new MMT(0.9)));
-    frame.add(new DenseLayer(5, 1, &sigmoid, new MMT(0.9)));
 
-//    frame.add(new DenseLayer(3, 5, &sigmoid, new XOR(0.9)));
-//    frame.add(new DenseLayer(5, 1, &sigmoid, new XOR(0.9)));
+    // define network
+    /**
+     * loss function: MSE
+     * */
+//    MyFrame frame = MyFrame(new MSE, -1);
+
+    /**
+     * loss function: cross entropy
+     * */
+    MyFrame frame = MyFrame(new CrossEntropy, -1);
+
+
+    /**
+     * active function: sigmoid
+     * optimizer: MMT
+     * */
+//    frame.add(new DenseLayer(3, 5, &sigmoid, new MMT(0.9)));
+//    frame.add(new DenseLayer(5, 1, &sigmoid, new MMT(0.9)));
+
+
+    /**
+     * active function: sigmoid
+     * optimizer: XOR
+     * */
+    frame.add(new DenseLayer(3, 5, &sigmoid, new XOR(0.9)));
+    frame.add(new DenseLayer(5, 1, &sigmoid, new XOR(0.9)));
+
+
+    /**
+     * active function: tanh
+     * optimizer: XOR
+     * */
+//    frame.add(new DenseLayer(3, 5, &tanh, new XOR(0.9)));
+//    frame.add(new DenseLayer(5, 1, &tanh, new XOR(0.9)));
 
     frame.train(4000, x, target);
 
