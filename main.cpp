@@ -469,10 +469,13 @@ public:
 //    Matrix y;  // y = xw+b
 //    Matrix u;  // u = active_func(y)；此層輸出(下一層的輸入)
 //    Matrix w, b;
-
-//    Matrix (*active_func)(Matrix x);
-
-//    double alpha;  // 學習率
+//    Matrix delta;
+//
+//    Matrix grad_w;
+//    Matrix grad_b;
+//
+//    ActiveFunc *active_func;
+//    Optimizer *optimizer;
 
     DenseLayer(size_t input_size, size_t output_size, ActiveFunc *_activeFunc, Optimizer *_optimizer){
         init(input_size, output_size, _activeFunc, _optimizer);
@@ -521,22 +524,7 @@ public:
     }
 
     void update() override{
-////        w - a(w)
-//        double _temp = eta / x.row();
-//
-////        grad_w.print_matrix();
-//        Matrix temp_w = Matrix::times(&grad_w, _temp);
-//
-////        cout << "temp_w:" << endl;
-////        temp_w.print_matrix();
-//
-//        w = Matrix::reduce(&w, &temp_w);
-//
-//        Matrix temp_b = Matrix::times(&grad_b, _temp);
-//        b = Matrix::reduce(&b, &temp_b);
-
         optimizer->gradient_decent(w, b, grad_w, grad_b);
-
     }
 
 };
@@ -642,11 +630,6 @@ int main() {
     // active func
     Sigmoid sigmoid = Sigmoid();
     Tanh tanh = Tanh();
-
-    // loss func
-//    MSE mse = MSE();
-//    CrossEntropy crossEntropy = CrossEntropy();
-
 
     // define network
     /**

@@ -31,6 +31,16 @@ public:
         return _matrix->matrix[0].size();
     }
 
+    // 取 start 到 end - 1 的row
+    inline static Matrix getRow(Matrix &_matrix, size_t start, size_t end){
+        if (end > _matrix.row() || start < 0){
+            cout << "shape_wrong: Matrix getRow, start: " << start
+                 << "  , end: " << end << endl;
+        }
+        vector<vector<double>> result(_matrix.matrix.begin() + start, _matrix.matrix.begin() + end);
+        return Matrix(result);
+    }
+
     static Matrix dot(Matrix *matrix_a, Matrix *matrix_b){
         size_t row_a = Matrix::row(matrix_a);
         size_t col_a = Matrix::col(matrix_a);
@@ -232,31 +242,48 @@ public:
 
 };
 
+
+// loss function - start
+
 class LossFunc{
 public:
     virtual double forward(Matrix &y, Matrix &target) = 0;
     virtual Matrix backward(Matrix &y, Matrix &target) = 0;
 };
 
-class MSE: public LossFunc{
+class CrossEntropy: public LossFunc{
 public:
-    double forward(Matrix &y, Matrix &target) override{
+    double forward(Matrix &y, Matrix &target) override {
         double result = 0;
-        Matrix temp = Matrix::reduce(&y, &target);
-        temp = Matrix::times(&temp, &temp);
-
-        for(size_t r=0;r<y.row();++r)
-            for(size_t c=0;c<y.col();++c)
-                result += temp.matrix[r][c];
-
-        result /= y.row() * y.col();
+        for (size_t i = 0; i< y.row(); i++){
+            for (size_t j = 0; j < y.col(); j++){
+                double _y = y.matrix[i][j];
+                double _target = target.matrix[i][j];
+                result += -_target * log(_y) - (1 - _target) * log(1 - _y);
+            }
+        }
         return result;
     }
 
     Matrix backward(Matrix &y, Matrix &target) override {
-        return Matrix::reduce(&y, &target);
+        Matrix result(y.row(), y.col(), 0);
+
+        for (size_t i = 0; i< y.row(); i++){
+            for (size_t j = 0; j < y.col(); j++){
+                double _y = y.matrix[i][j];
+                double _target = target.matrix[i][j];
+                result.matrix[i][j] = (_y - _target) / (_y * (1 - _y));
+            }
+        }
+
+        return result;
     }
 };
+
+// loss function - end
+
+
+// active function - start
 
 class ActiveFunc{
 public:
@@ -273,6 +300,7 @@ public:
         for (int i = 0; i< x.row(); i++){
             for (int j = 0; j< x.col(); j++) {
                 result.matrix[i][j] = 1 / (1 + exp(-x.matrix[i][j]));
+
             }
         }
         return result;
@@ -286,6 +314,39 @@ public:
     }
 };
 
+// active function - end
+
+
+// Optimizer - start
+
+class Optimizer{
+public:
+    virtual void gradient_decent(Matrix &w, Matrix &b, Matrix &grad_w, Matrix &grad_b) = 0;
+};
+
+class XOR: public Optimizer{
+public:
+    double eta;
+
+    XOR(double _eta){
+        eta = _eta;
+    }
+
+    void gradient_decent(Matrix &w, Matrix &b, Matrix &grad_w, Matrix &grad_b) override {
+        double _temp = eta / w.row();
+
+        Matrix temp_w = Matrix::times(&grad_w, _temp);
+        w = Matrix::reduce(&w, &temp_w);
+
+        Matrix temp_b = Matrix::times(&grad_b, _temp);
+        b = Matrix::reduce(&b, &temp_b);
+    }
+
+};
+
+// Optimizer - end
+
+
 class Layer{
 public:
     Matrix x;  // 輸入
@@ -298,10 +359,11 @@ public:
     Matrix grad_b;
 
     ActiveFunc *active_func;
+    Optimizer *optimizer;
 
     virtual Matrix forward(Matrix x) = 0;
     virtual Matrix backward(Matrix _delta) = 0;
-    virtual void update(double eta) = 0;
+    virtual void update() = 0;
 };
 
 class DenseLayer : public Layer{
@@ -310,23 +372,27 @@ public:
 //    Matrix y;  // y = xw+b
 //    Matrix u;  // u = active_func(y)；此層輸出(下一層的輸入)
 //    Matrix w, b;
+//    Matrix delta;
+//
+//    Matrix grad_w;
+//    Matrix grad_b;
+//
+//    ActiveFunc *active_func;
+//    Optimizer *optimizer;
 
-//    Matrix (*active_func)(Matrix x);
-
-//    double alpha;  // 學習率
-
-    DenseLayer(size_t input_size, size_t output_size, ActiveFunc *activeFunc){
-        init(input_size, output_size, activeFunc);
+    DenseLayer(size_t input_size, size_t output_size, ActiveFunc *_activeFunc, Optimizer *_optimizer){
+        init(input_size, output_size, _activeFunc, _optimizer);
     }
 
-    void init(size_t input_size, size_t output_size, ActiveFunc *activeFunc){
+    void init(size_t input_size, size_t output_size, ActiveFunc *_activeFunc, Optimizer *_optimizer){
         w = Matrix(input_size, output_size, 0);
         w.random_matrix();
         b = Matrix(1, output_size, 0);
         b.random_matrix();
         grad_w = Matrix(w.row(), w.col(), 0);
         grad_b = Matrix(b.row(), b.col(), 0);
-        active_func = activeFunc;
+        active_func = _activeFunc;
+        optimizer = _optimizer;
     }
 
     Matrix forward(Matrix _x) override{
@@ -338,8 +404,12 @@ public:
     }
 
     Matrix backward(Matrix _delta) override{
-        // 反向傳播的active function該如何處理好呢
 //         x.T dot (_delta * active_func->func_backward(x))
+
+        // 初始化gradient_w and b
+        grad_w = Matrix(grad_w.row(), grad_w.col(), 0);
+        grad_b = Matrix(grad_b.row(), grad_b.col(), 0);
+
         Matrix active_func_back = active_func->func_backward(u);
         Matrix my_delta = Matrix::times(&_delta, &active_func_back);
 
@@ -356,27 +426,8 @@ public:
         return delta;
     }
 
-    void update(double eta) override{
-//        w - a(w)
-        double _temp = eta / x.row();
-
-//        grad_w.print_matrix();
-        Matrix temp_w = Matrix::times(&grad_w, _temp);
-
-//        cout << "temp_w:" << endl;
-//        temp_w.print_matrix();
-
-        w = Matrix::reduce(&w, &temp_w);
-
-        Matrix temp_b = Matrix::times(&grad_b, _temp);
-        b = Matrix::reduce(&b, &temp_b);
-
-        grad_w = Matrix(grad_w.row(), grad_w.col(), 0);
-        grad_b = Matrix(grad_b.row(), grad_b.col(), 0);
-
-
-//        w.print_matrix();
-
+    void update() override{
+        optimizer->gradient_decent(w, b, grad_w, grad_b);
     }
 
 };
@@ -384,49 +435,66 @@ public:
 class MyFrame{
     vector<Layer*> layers = vector<Layer*>(0);
     LossFunc *lossFunc;
-    double eta;  // 學習率
     int batch;
 
 public:
 
-    MyFrame(LossFunc *_lossFun, double _eta, int _batch){
+    MyFrame(LossFunc *_lossFun, int _batch){
         lossFunc = _lossFun;
-        eta = _eta;
         batch = _batch;
     }
 
     ~MyFrame(){
-        size_t size = layers.size();
-        for (size_t i = 0; i < size; ++i) {
-            delete layers[i];
-        }
+        // 這裡是這樣寫嗎?
         layers.clear();
-
+        layers = vector<Layer*>();
     }
 
     void add(Layer *layer){
         layers.push_back(layer);
     }
 
-    void train(size_t epoch, Matrix &x, Matrix &target){
-        for (size_t time = 0; time < epoch; ++time){
-            train_one_time(x, target);
+    void train(size_t epoch, Matrix &x, Matrix &target){  // 這裡擴充batch size
+        size_t _batch = batch == -1 ? x.row() : batch;
+
+        for (size_t i = 0; i < epoch; i++){
+            size_t data_left_size = x.row();  // 存著還有幾筆資料需要訓練
+//            train_one_time(x, target);
+//            continue;
+
+            for (size_t j = 0; data_left_size > 0 ; j++){
+                if (data_left_size < _batch){
+                    // 如果資料量"不足"填滿一個batch
+                    Matrix _x = Matrix::getRow(x, j * _batch, j * _batch + data_left_size);
+                    Matrix _target = Matrix::getRow(target, j * _batch, j * _batch + data_left_size);
+
+                    train_one_time(_x, _target);
+                    data_left_size = 0;
+                }else{
+                    // 如果資料量"足夠"填滿一個batch
+                    Matrix _x = Matrix::getRow(x, j * _batch, j * _batch + _batch);
+                    Matrix _target = Matrix::getRow(target, j * _batch, j * _batch + _batch);
+
+                    train_one_time(_x, _target);
+                    data_left_size -= _batch;
+                }
+
+            }
         }
     }
 
-    inline void train_one_time(Matrix &x, Matrix &target){
+    inline void train_one_time(Matrix &x, Matrix &target){  // 這裡客製化網路輸入
         Matrix y = x;
-        for (size_t i = 0; i < layers.size(); ++i){
+        for (size_t i=0;i<layers.size();++i){
             y = layers[i]->forward(y);
         }
-
         Matrix delta = lossFunc->backward(y, target);
         for (int i = layers.size() - 1; i >= 0; --i){
             delta = layers[i]->backward(delta);
         }
 
         for (size_t i = 0; i < layers.size(); ++i){
-            layers[i]->update(eta);
+            layers[i]->update();
         }
     }
 
@@ -449,21 +517,26 @@ public:
 };
 
 int main() {
-
     vector<vector<double>> temp_x = {{0, 0, 1}, {0, 1, 1}, {1, 0, 1}, {1, 1, 1}};
     vector<vector<double>> temp_target = {{0}, {1}, {1}, {0}};
-//    vector<vector<double>> temp_target = {{0, 1}, {0, 1}, {1, 0}, {1, 0}};
 
+    // data init
     Matrix x = Matrix(temp_x);
     Matrix target = Matrix(temp_target);
 
+    // active func
     Sigmoid sigmoid = Sigmoid();
-    MSE loss_func = MSE();
 
-    MyFrame frame = MyFrame(&loss_func, 0.9, -1);
+    // network init
+    MyFrame frame = MyFrame(new CrossEntropy, -1);
 
-    frame.add(new DenseLayer(3, 5, &sigmoid));
-    frame.add(new DenseLayer(5, 1, &sigmoid));
+    /**
+     * active function: sigmoid
+     * optimizer: XOR
+     * */
+    frame.add(new DenseLayer(3, 5, &sigmoid, new XOR(0.9)));
+    frame.add(new DenseLayer(5, 1, &sigmoid, new XOR(0.9)));
+
 
     frame.train(4000, x, target);
 

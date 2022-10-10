@@ -12,4 +12,4 @@ add_executable(test
 )
 
 add_executable(class_work
-        class_work/1006/1006_back_propagation.cpp class_work/1006/1006_mmt.cpp)
+        class_work/1006/1006_cross_entropy.cpp class_work/1006/1006_mmt.cpp)
