@@ -1,5 +1,0 @@
-C:/Users/qwe43/Desktop/C/cpp_machine_learning/cmake-build-debug/CMakeFiles/AI_class.dir
-C:/Users/qwe43/Desktop/C/cpp_machine_learning/cmake-build-debug/CMakeFiles/test.dir
-C:/Users/qwe43/Desktop/C/cpp_machine_learning/cmake-build-debug/CMakeFiles/class_work.dir
-C:/Users/qwe43/Desktop/C/cpp_machine_learning/cmake-build-debug/CMakeFiles/edit_cache.dir
-C:/Users/qwe43/Desktop/C/cpp_machine_learning/cmake-build-debug/CMakeFiles/rebuild_cache.dir

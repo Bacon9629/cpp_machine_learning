@@ -254,55 +254,6 @@ public:
     virtual Matrix backward(Matrix &y, Matrix &target) = 0;
 };
 
-class MSE: public LossFunc{
-public:
-    double forward(Matrix &y, Matrix &target) override{
-        double result = 0;
-        Matrix temp = Matrix::reduce(&y, &target);
-        temp = Matrix::times(&temp, &temp);
-
-        for(size_t r=0;r<y.row();++r)
-            for(size_t c=0;c<y.col();++c)
-                result += temp.matrix[r][c];
-
-        result /= y.row() * y.col();
-        return result;
-    }
-
-    Matrix backward(Matrix &y, Matrix &target) override {
-        return Matrix::reduce(&y, &target);
-    }
-};
-
-class CrossEntropy: public LossFunc{
-public:
-    double forward(Matrix &y, Matrix &target) override {
-        double result = 0;
-        for (size_t i = 0; i< y.row(); i++){
-            for (size_t j = 0; j < y.col(); j++){
-                double _y = y.matrix[i][j];
-                double _target = target.matrix[i][j];
-                result += -_target * log(_y) - (1 - _target) * log(1 - _y);
-            }
-        }
-        return result;
-    }
-
-    Matrix backward(Matrix &y, Matrix &target) override {
-        Matrix result(y.row(), y.col(), 0);
-
-        for (size_t i = 0; i< y.row(); i++){
-            for (size_t j = 0; j < y.col(); j++){
-                double _y = y.matrix[i][j];
-                double _target = target.matrix[i][j];
-                result.matrix[i][j] = (_y - _target) / (_y * (1 - _y));
-            }
-        }
-
-        return result;
-    }
-};
-
 class CrossEntropy_SoftMax: public LossFunc{
 public:
     double forward(Matrix &y, Matrix &target) override {
@@ -342,28 +293,6 @@ public:
 
 };
 
-class Sigmoid: public ActiveFunc{
-public:
-    Matrix func_forward(Matrix x) override {
-        Matrix result(x.row(), x.col(), 0);
-
-        for (int i = 0; i< x.row(); i++){
-            for (int j = 0; j< x.col(); j++) {
-                result.matrix[i][j] = 1 / (1 + exp(-x.matrix[i][j]));
-
-            }
-        }
-        return result;
-    }
-
-    Matrix func_backward(Matrix x) override {
-        Matrix a = func_forward(x);
-        Matrix b = Matrix::reduce(&a, 1);
-        b = Matrix::times(&b, -1);
-        return Matrix::times(&a, &b);
-    }
-};
-
 class SoftMax_CrossEntropy: public ActiveFunc{
 public:
     Matrix func_forward(Matrix x) override {
@@ -392,40 +321,6 @@ public:
     }
 };
 
-class Tanh:public ActiveFunc{
-public:
-    Matrix func_forward(Matrix x) override {
-        Matrix result(x.row(), x.col(), 0);
-
-        for (int i = 0; i< x.row(); i++){
-            for (int j = 0; j< x.col(); j++) {
-                double a = exp(x.matrix[i][j]);
-                double b = exp(-x.matrix[i][j]);
-//                double c = (a - b) / (b - a);
-                result.matrix[i][j] = (a - b) / (b - a);
-            }
-        }
-        return result;
-    }
-
-    Matrix func_backward(Matrix x) override {
-        Matrix result(x.row(), x.col(), 0);
-
-        for (int i = 0; i< x.row(); i++){
-            for (int j = 0; j< x.col(); j++) {
-                double a = exp(x.matrix[i][j]);
-                double b = exp(-x.matrix[i][j]);
-                double c = (a - b) / (b - a);
-                result.matrix[i][j] = 1 - c * c;
-            }
-        }
-
-
-        return result;
-    }
-
-};
-
 // active function - end
 
 
@@ -452,48 +347,6 @@ public:
 
         Matrix temp_b = Matrix::times(&grad_b, _temp);
         b = Matrix::reduce(&b, &temp_b);
-    }
-
-};
-
-class MMT: public Optimizer{
-public:
-    double eta;
-    double beta = 0.9;
-    Matrix last_grad_w = Matrix();
-    Matrix last_grad_b = Matrix();
-
-    MMT(double _eta){
-        init(_eta, 0.9);
-    }
-
-    MMT(double _eta, double _beta){
-        init(_eta, _beta);
-    }
-
-    void init(double _eta, double _beta){
-        eta = _eta;
-        beta = _beta;
-    }
-
-    void gradient_decent(Matrix &w, Matrix &b, Matrix &grad_w, Matrix &grad_b) override {
-//        last_grad_w =  alpha * grad_w + beta * last_grad_w;
-//        w -= last_grad_w;
-        if (last_grad_w.row() == 0){
-            last_grad_w = Matrix(grad_w.row(), grad_w.col(), 0);
-            last_grad_b = Matrix(grad_b.row(), grad_b.col(), 0);
-        }
-
-        Matrix temp_a = Matrix::times(&grad_w, eta);
-        Matrix temp_b = Matrix::times(&last_grad_w, beta);
-        last_grad_w = Matrix::add(&temp_a, &temp_b);
-        w = Matrix::reduce(&w, &last_grad_w);
-
-        temp_a = Matrix::times(&grad_b, eta);
-        temp_b = Matrix::times(&last_grad_b, beta);
-        last_grad_b = Matrix::add(&temp_a, &temp_b);
-        b = Matrix::reduce(&b, &last_grad_b);
-
     }
 
 };
@@ -671,7 +524,6 @@ public:
 };
 
 int main() {
-//    vector<vector<double>> temp_x = {{0, 0, 1}, {0, 1, 1}, {1, 0, 1}, {1, 1, 1}};
 
     vector<vector<double>> temp_x =
             {
@@ -707,89 +559,18 @@ int main() {
              {0, 0, 1, 0, 0},
              {0, 0, 0, 1, 0},
              {0, 0, 0, 0, 1}};
-    {
-//    vector<vector<double>> temp_validation =
-//            {
-//                    {0, 0, 1, 1, 0,
-//                            0, 0, 1, 1, 0,
-//                            0, 1, 0, 1, 0,
-//                            0, 0, 0, 1, 0,
-//                            0, 1, 1, 1, 0},
-//                    {1, 1, 1, 1, 0,
-//                            0, 0, 0, 0, 1,
-//                            0, 1, 1, 1, 0,
-//                            1, 0, 0, 0, 1,
-//                            1, 1, 1, 1, 1},
-//                    {1, 1, 1, 1, 0,
-//                            0, 0, 0, 0, 1,
-//                            0, 1, 1, 1, 0,
-//                            1, 0, 0, 0, 1,
-//                            1, 1, 1, 1, 0},
-//                    {0, 1, 1, 1, 0,
-//                            0, 1, 0, 0, 0,
-//                            0, 1, 1, 1, 0,
-//                            0, 0, 0, 1, 1,
-//                            0, 1, 1, 1, 0},
-//                    {0, 1, 1, 1, 1,
-//                            0, 1, 0, 0, 0,
-//                            0, 1, 1, 1, 0,
-//                            0, 0, 0, 1, 0,
-//                            1, 1, 1, 1, 0}
-//            };
-    }
 
-
-//    vector<vector<double>> temp_x = {{0, 0, 1}, {0, 1, 1}, {1, 0, 1}, {1, 1, 1}};
-//    vector<vector<double>> temp_target = {{0}, {1}, {1}, {0}};
     // data init
     Matrix x = Matrix(temp_x);
-//    Matrix validation = Matrix(temp_validation);
     Matrix target = Matrix(temp_target);
 
     // active func
-    Sigmoid sigmoid = Sigmoid();
     SoftMax_CrossEntropy softmax = SoftMax_CrossEntropy();
-    Tanh tanh = Tanh();
-
-    // define network
-    /**
-     * loss function: MSE
-     * */
-//    MyFrame frame = MyFrame(new MSE, -1);
-
-    /**
-     * loss function: cross entropy
-     * */
-//    MyFrame frame = MyFrame(new CrossEntropy, -1);
 
     /**
      * loss function: cross entropy with softmax
      * */
     MyFrame frame = MyFrame(new CrossEntropy_SoftMax, -1);
-
-
-    /**
-     * active function: sigmoid
-     * optimizer: MMT
-     * */
-//    frame.add(new DenseLayer(3, 5, &sigmoid, new MMT(0.9)));
-//    frame.add(new DenseLayer(5, 1, &sigmoid, new MMT(0.9)));
-
-
-    /**
-     * active function: sigmoid
-     * optimizer: XOR
-     * */
-//    frame.add(new DenseLayer(3, 5, &sigmoid, new XOR(0.9)));
-//    frame.add(new DenseLayer(5, 1, &sigmoid, new XOR(0.9)));
-
-
-    /**
-     * active function: tanh
-     * optimizer: XOR
-     * */
-//    frame.add(new DenseLayer(3, 5, &tanh, new XOR(0.9)));
-//    frame.add(new DenseLayer(5, 1, &tanh, new XOR(0.9)));
 
 
     /**
