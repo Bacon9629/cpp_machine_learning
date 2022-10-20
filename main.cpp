@@ -342,6 +342,29 @@ public:
 
 };
 
+class Relu: public ActiveFunc{
+public:
+    Matrix func_forward(Matrix x) override {
+        Matrix result = Matrix(x.row(), x.col(), 0);
+        for (size_t i = 0; i<x.row(); i++){
+            for (size_t j = 0; j<x.col(); j++){
+                    result.matrix[i][j] = x.matrix[i][j] > 0 ? x.matrix[i][j] : 0;
+            }
+        }
+        return result;
+    }
+
+    Matrix func_backward(Matrix x) override {
+        Matrix result = Matrix(x.row(), x.col(), 0);
+        for (size_t i = 0; i<x.row(); i++){
+            for (size_t j = 0; j<x.col(); j++){
+                result.matrix[i][j] = x.matrix[i][j] > 0 ? 1 : 0;
+            }
+        }
+        return result;
+    }
+};
+
 class Sigmoid: public ActiveFunc{
 public:
     Matrix func_forward(Matrix x) override {
@@ -758,75 +781,15 @@ int main() {
     Sigmoid sigmoid = Sigmoid();
     SoftMax_CrossEntropy softmax = SoftMax_CrossEntropy();
     Tanh tanh = Tanh();
-
-    // define network
-    /**
-     * loss function: MSE
-     * */
-//    MyFrame frame = MyFrame(new MSE, -1);
-
-    /**
-     * loss function: cross entropy
-     * */
-//    MyFrame frame = MyFrame(new CrossEntropy, -1);
-
-
-
-
-    /**
-     * loss function: MSE
-     * */
-//    MyFrame frame = MyFrame(new MSE, -1);
-
-    /**
-     * active function: sigmoid
-     * optimizer: MMT
-     * */
-//    frame.add(new DenseLayer(3, 5, &sigmoid, new MMT(0.9)));
-//    frame.add(new DenseLayer(5, 1, &sigmoid, new MMT(0.9)));
-
-
-
-
-    /**
-     * loss function: MSE
-     * */
-//    MyFrame frame = MyFrame(new MSE, -1);
-
-    /**
-     * active function: sigmoid
-     * optimizer: SGD
-     * */
-//    frame.add(new DenseLayer(3, 5, &sigmoid, new SGD(0.9)));
-//    frame.add(new DenseLayer(5, 1, &sigmoid, new SGD(0.9)));
-
-
-
-
-    /**
-     * loss function: MSE
-     * */
-//    MyFrame frame = MyFrame(new MSE, -1);
-
-    /**
-     * active function: tanh
-     * optimizer: SGD
-     * */
-//    frame.add(new DenseLayer(3, 5, &tanh, new SGD(0.9)));
-//    frame.add(new DenseLayer(5, 1, &tanh, new SGD(0.9)));
-
-
+    Relu relu = Relu();
 
     /**
      * loss function: cross entropy with softmax
      * */
     MyFrame frame = MyFrame(new CrossEntropy_SoftMax, -1);
 
-    /**
-     * active function: softmax with CrossEntropy
-     * optimizer: SGD
-     * */
-    frame.add(new DenseLayer(25, 64, &sigmoid, new SGD(0.1)));
+
+    frame.add(new DenseLayer(25, 64, &relu, new SGD(0.1)));
 //    frame.add(new DenseLayer(64, 32, &softmax, new SGD(0.1)));
     frame.add(new DenseLayer(64, 5, &softmax, new SGD(0.1)));
 

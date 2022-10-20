@@ -293,6 +293,28 @@ public:
 
 };
 
+class Sigmoid: public ActiveFunc{
+public:
+    Matrix func_forward(Matrix x) override {
+        Matrix result(x.row(), x.col(), 0);
+
+        for (int i = 0; i< x.row(); i++){
+            for (int j = 0; j< x.col(); j++) {
+                result.matrix[i][j] = 1 / (1 + exp(-x.matrix[i][j]));
+
+            }
+        }
+        return result;
+    }
+
+    Matrix func_backward(Matrix x) override {
+        Matrix a = func_forward(x);
+        Matrix b = Matrix::reduce(&a, 1);
+        b = Matrix::times(&b, -1);
+        return Matrix::times(&a, &b);
+    }
+};
+
 class SoftMax_CrossEntropy: public ActiveFunc{
 public:
     Matrix func_forward(Matrix x) override {
@@ -371,6 +393,75 @@ public:
     virtual Matrix forward(Matrix x) = 0;
     virtual Matrix backward(Matrix _delta) = 0;
     virtual void update() = 0;
+};
+
+
+class DropoutDenseLayer : public Layer{
+public:
+//    Matrix x;  // 輸入
+//    Matrix y;  // y = xw+b
+//    Matrix u;  // u = active_func(y)；此層輸出(下一層的輸入)
+//    Matrix w, b;
+//    Matrix delta;
+//
+//    Matrix grad_w;
+//    Matrix grad_b;
+//
+//    ActiveFunc *active_func;
+//    Optimizer *optimizer;
+    double dropout = 0;
+
+    DropoutDenseLayer(size_t input_size, size_t output_size, ActiveFunc *_activeFunc, Optimizer *_optimizer, double dropout){
+        init(input_size, output_size, _activeFunc, _optimizer);
+        dropout = dropout;
+    }
+
+    void init(size_t input_size, size_t output_size, ActiveFunc *_activeFunc, Optimizer *_optimizer){
+        w = Matrix(input_size, output_size, 0);
+        w.random_matrix();
+        b = Matrix(1, output_size, 0);
+        b.random_matrix();
+        grad_w = Matrix(w.row(), w.col(), 0);
+        grad_b = Matrix(b.row(), b.col(), 0);
+        active_func = _activeFunc;
+        optimizer = _optimizer;
+    }
+
+    Matrix forward(Matrix _x) override{
+        x = _x;
+        u = Matrix::dot(&x, &w);
+        u = Matrix::add(&u, &b);
+        y = active_func->func_forward(u);
+        return y;
+    }
+
+    Matrix backward(Matrix _delta) override{
+//         x.T dot (_delta * active_func->func_backward(x))
+
+        // 初始化gradient_w and b
+        grad_w = Matrix(grad_w.row(), grad_w.col(), 0);
+        grad_b = Matrix(grad_b.row(), grad_b.col(), 0);
+
+        Matrix active_func_back = active_func->func_backward(u);
+        Matrix my_delta = Matrix::times(&_delta, &active_func_back);
+
+        Matrix x_t = x.transpose();
+        Matrix _grad_w = Matrix::dot(&x_t, &my_delta);
+        grad_w = Matrix::add(&grad_w, &_grad_w);
+
+        Matrix _grad_b = my_delta;
+        grad_b = Matrix::add(&grad_b, &_grad_b);
+//1*30 3*30 =
+        Matrix w_t = w.transpose();
+        delta = Matrix::dot(&my_delta, &w_t);
+//        grad_w.print_matrix();
+        return delta;
+    }
+
+    void update() override{
+        optimizer->gradient_decent(w, b, grad_w, grad_b);
+    }
+
 };
 
 class DenseLayer : public Layer{
@@ -566,6 +657,7 @@ int main() {
 
     // active func
     SoftMax_CrossEntropy softmax = SoftMax_CrossEntropy();
+    Sigmoid sigmoid = Sigmoid();
 
     /**
      * loss function: cross entropy with softmax

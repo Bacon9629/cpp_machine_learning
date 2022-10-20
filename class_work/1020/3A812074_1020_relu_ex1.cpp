@@ -581,6 +581,45 @@ int main() {
              {0, 0, 1, 0, 0},
              {0, 0, 0, 1, 0},
              {0, 0, 0, 0, 1}};
+    vector<vector<double>> temp_validation =
+            {
+                    {
+                            0, 0, 1, 1, 0,
+                            0, 0, 1, 1, 0,
+                            0, 1, 0, 1, 0,
+                            0, 0, 0, 1, 0,
+                            0, 1, 1, 1, 0},
+                    {
+                            1, 1, 1, 1, 0,
+                            0, 0, 0, 0, 1,
+                            0, 1, 1, 1, 0,
+                            1, 0, 0, 0, 1,
+                            1, 1, 1, 1, 1},
+                    {
+                            1, 1, 1, 1, 0,
+                            0, 0, 0, 0, 1,
+                            0, 1, 1, 1, 0,
+                            1, 0, 0, 0, 1,
+                            1, 1, 1, 1, 0},
+                    {
+                            0, 1, 1, 1, 0,
+                            0, 1, 0, 0, 0,
+                            0, 1, 1, 1, 0,
+                            0, 0, 0, 1, 1,
+                            0, 1, 1, 1, 0},
+                    {
+                            0, 1, 1, 1, 1,
+                            0, 1, 0, 0, 0,
+                            0, 1, 1, 1, 0,
+                            0, 0, 0, 1, 0,
+                            1, 1, 1, 1, 0}
+            };
+    vector<vector<double>> temp_validation_target =
+            {{1, 0, 0, 0, 0},
+             {0, 1, 0, 0, 0},
+             {0, 0, 1, 0, 0},
+             {0, 0, 0, 1, 0},
+             {0, 0, 0, 1, 0}};
 
     // data init
     Matrix x = Matrix(temp_x);
@@ -600,59 +639,23 @@ int main() {
      * active function: softmax with CrossEntropy
      * optimizer: XOR
      * */
-    frame.add(new DenseLayer(25, 64, &sigmoid, new XOR(0.9)));
-    frame.add(new DenseLayer(64, 5, &softmax, new XOR(0.9)));
-
-    frame.train(4000, x, target);
-
-
+    frame.add(new DenseLayer(25, 64, &sigmoid, new XOR(0.01)));
+    frame.add(new DenseLayer(64, 32, &sigmoid, new XOR(0.01)));
+    frame.add(new DenseLayer(32, 32, &sigmoid, new XOR(0.01)));
+    frame.add(new DenseLayer(32, 5, &softmax, new XOR(0.01)));
 
 
+    frame.train(6000, x, target);
 
-    vector<vector<double>> temp_validation =
-            {
-                    {
-                        0, 0, 1, 1, 0,
-                        0, 0, 1, 1, 0,
-                        0, 1, 0, 1, 0,
-                        0, 0, 0, 1, 0,
-                        0, 1, 1, 1, 0},
-                    {
-                        1, 1, 1, 1, 0,
-                        0, 0, 0, 0, 1,
-                        0, 1, 1, 1, 0,
-                        1, 0, 0, 0, 1,
-                        1, 1, 1, 1, 1},
-                    {
-                        1, 1, 1, 1, 0,
-                        0, 0, 0, 0, 1,
-                        0, 1, 1, 1, 0,
-                        1, 0, 0, 0, 1,
-                        1, 1, 1, 1, 0},
-                    {
-                        0, 1, 1, 1, 0,
-                        0, 1, 0, 0, 0,
-                        0, 1, 1, 1, 0,
-                        0, 0, 0, 1, 1,
-                        0, 1, 1, 1, 0},
-                    {
-                        0, 1, 1, 1, 1,
-                        0, 1, 0, 0, 0,
-                        0, 1, 1, 1, 0,
-                        0, 0, 0, 1, 0,
-                        1, 1, 1, 1, 0}
-            };
 
-    vector<vector<double>> temp_validation_target =
-            {{1, 0, 0, 0, 0},
-             {0, 1, 0, 0, 0},
-             {0, 0, 1, 0, 0},
-             {0, 0, 0, 1, 0},
-             {0, 0, 0, 1, 0}};
 
     Matrix validation_x = Matrix(temp_validation);
     Matrix validation_target = Matrix(temp_validation_target);
 
+    cout << "training test" << endl;
+    frame.show(x, target);
+
+    cout << "\nvalidation test" << endl;
     frame.show(validation_x, validation_target);
     return 0;
 }
