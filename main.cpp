@@ -436,11 +436,11 @@ public:
     virtual void gradient_decent(Matrix &w, Matrix &b, Matrix &grad_w, Matrix &grad_b) = 0;
 };
 
-class XOR: public Optimizer{
+class SGD: public Optimizer{
 public:
     double eta;
 
-    XOR(double _eta){
+    SGD(double _eta){
         eta = _eta;
     }
 
@@ -707,44 +707,52 @@ int main() {
              {0, 0, 1, 0, 0},
              {0, 0, 0, 1, 0},
              {0, 0, 0, 0, 1}};
-    {
-//    vector<vector<double>> temp_validation =
-//            {
-//                    {0, 0, 1, 1, 0,
-//                            0, 0, 1, 1, 0,
-//                            0, 1, 0, 1, 0,
-//                            0, 0, 0, 1, 0,
-//                            0, 1, 1, 1, 0},
-//                    {1, 1, 1, 1, 0,
-//                            0, 0, 0, 0, 1,
-//                            0, 1, 1, 1, 0,
-//                            1, 0, 0, 0, 1,
-//                            1, 1, 1, 1, 1},
-//                    {1, 1, 1, 1, 0,
-//                            0, 0, 0, 0, 1,
-//                            0, 1, 1, 1, 0,
-//                            1, 0, 0, 0, 1,
-//                            1, 1, 1, 1, 0},
-//                    {0, 1, 1, 1, 0,
-//                            0, 1, 0, 0, 0,
-//                            0, 1, 1, 1, 0,
-//                            0, 0, 0, 1, 1,
-//                            0, 1, 1, 1, 0},
-//                    {0, 1, 1, 1, 1,
-//                            0, 1, 0, 0, 0,
-//                            0, 1, 1, 1, 0,
-//                            0, 0, 0, 1, 0,
-//                            1, 1, 1, 1, 0}
-//            };
-    }
+
+    vector<vector<double>> temp_validation =
+            {
+                    {0, 0, 1, 1, 0,
+                            0, 0, 1, 1, 0,
+                            0, 1, 0, 1, 0,
+                            0, 0, 0, 1, 0,
+                            0, 1, 1, 1, 0},
+                    {1, 1, 1, 1, 0,
+                            0, 0, 0, 0, 1,
+                            0, 1, 1, 1, 0,
+                            1, 0, 0, 0, 1,
+                            1, 1, 1, 1, 1},
+                    {1, 1, 1, 1, 0,
+                            0, 0, 0, 0, 1,
+                            0, 1, 1, 1, 0,
+                            1, 0, 0, 0, 1,
+                            1, 1, 1, 1, 0},
+                    {0, 1, 1, 1, 0,
+                            0, 1, 0, 0, 0,
+                            0, 1, 1, 1, 0,
+                            0, 0, 0, 1, 1,
+                            0, 1, 1, 1, 0},
+                    {0, 1, 1, 1, 1,
+                            0, 1, 0, 0, 0,
+                            0, 1, 1, 1, 0,
+                            0, 0, 0, 1, 0,
+                            1, 1, 1, 1, 0}
+            };
+
+    vector<vector<double>> temp_validation_target =
+            {{1, 0, 0, 0, 0},
+             {0, 1, 0, 0, 0},
+             {0, 0, 1, 0, 0},
+             {0, 0, 0, 1, 0},
+             {0, 0, 0, 1, 0}};
+
 
 
 //    vector<vector<double>> temp_x = {{0, 0, 1}, {0, 1, 1}, {1, 0, 1}, {1, 1, 1}};
 //    vector<vector<double>> temp_target = {{0}, {1}, {1}, {0}};
     // data init
     Matrix x = Matrix(temp_x);
-//    Matrix validation = Matrix(temp_validation);
-    Matrix target = Matrix(temp_target);
+    Matrix x_target = Matrix(temp_target);
+    Matrix validation = Matrix(temp_validation);
+    Matrix validation_target = Matrix(temp_validation_target);
 
     // active func
     Sigmoid sigmoid = Sigmoid();
@@ -762,11 +770,13 @@ int main() {
      * */
 //    MyFrame frame = MyFrame(new CrossEntropy, -1);
 
-    /**
-     * loss function: cross entropy with softmax
-     * */
-    MyFrame frame = MyFrame(new CrossEntropy_SoftMax, -1);
 
+
+
+    /**
+     * loss function: MSE
+     * */
+//    MyFrame frame = MyFrame(new MSE, -1);
 
     /**
      * active function: sigmoid
@@ -776,32 +786,54 @@ int main() {
 //    frame.add(new DenseLayer(5, 1, &sigmoid, new MMT(0.9)));
 
 
+
+
+    /**
+     * loss function: MSE
+     * */
+//    MyFrame frame = MyFrame(new MSE, -1);
+
     /**
      * active function: sigmoid
-     * optimizer: XOR
+     * optimizer: SGD
      * */
-//    frame.add(new DenseLayer(3, 5, &sigmoid, new XOR(0.9)));
-//    frame.add(new DenseLayer(5, 1, &sigmoid, new XOR(0.9)));
+//    frame.add(new DenseLayer(3, 5, &sigmoid, new SGD(0.9)));
+//    frame.add(new DenseLayer(5, 1, &sigmoid, new SGD(0.9)));
 
+
+
+
+    /**
+     * loss function: MSE
+     * */
+//    MyFrame frame = MyFrame(new MSE, -1);
 
     /**
      * active function: tanh
-     * optimizer: XOR
+     * optimizer: SGD
      * */
-//    frame.add(new DenseLayer(3, 5, &tanh, new XOR(0.9)));
-//    frame.add(new DenseLayer(5, 1, &tanh, new XOR(0.9)));
+//    frame.add(new DenseLayer(3, 5, &tanh, new SGD(0.9)));
+//    frame.add(new DenseLayer(5, 1, &tanh, new SGD(0.9)));
+
 
 
     /**
-     * active function: softmax with CrossEntropy
-     * optimizer: XOR
+     * loss function: cross entropy with softmax
      * */
-    frame.add(new DenseLayer(25, 64, &sigmoid, new XOR(0.9)));
-    frame.add(new DenseLayer(64, 5, &softmax, new XOR(0.9)));
+    MyFrame frame = MyFrame(new CrossEntropy_SoftMax, -1);
 
-    frame.train(4000, x, target);
+    /**
+     * active function: softmax with CrossEntropy
+     * optimizer: SGD
+     * */
+    frame.add(new DenseLayer(25, 64, &sigmoid, new SGD(0.1)));
+//    frame.add(new DenseLayer(64, 32, &softmax, new SGD(0.1)));
+    frame.add(new DenseLayer(64, 5, &softmax, new SGD(0.1)));
+
+    frame.train(6000, x, x_target);
 
 
-    frame.show(x, target);
+    frame.show(validation, validation_target);
+    frame.show(x, x_target);
     return 0;
 }

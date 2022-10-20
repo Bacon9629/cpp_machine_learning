@@ -324,11 +324,11 @@ public:
     virtual void gradient_decent(Matrix &w, Matrix &b, Matrix &grad_w, Matrix &grad_b) = 0;
 };
 
-class XOR: public Optimizer{
+class SGD: public Optimizer{
 public:
     double eta;
 
-    XOR(double _eta){
+    SGD(double _eta){
         eta = _eta;
     }
 
@@ -532,10 +532,10 @@ int main() {
 
     /**
      * active function: sigmoid
-     * optimizer: XOR
+     * optimizer: SGD
      * */
-    frame.add(new DenseLayer(3, 5, &sigmoid, new XOR(0.9)));
-    frame.add(new DenseLayer(5, 1, &sigmoid, new XOR(0.9)));
+    frame.add(new DenseLayer(3, 5, &sigmoid, new SGD(0.9)));
+    frame.add(new DenseLayer(5, 1, &sigmoid, new SGD(0.9)));
 
 
     frame.train(4000, x, target);
