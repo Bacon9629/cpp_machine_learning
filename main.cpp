@@ -659,8 +659,8 @@ public:
             }
         }
     }
-
     inline void train_one_time(Matrix &x, Matrix &target){  // 這裡客製化網路輸入
+
         Matrix y = x;
         for (size_t i=0;i<layers.size();++i){
             y = layers[i]->forward(y);

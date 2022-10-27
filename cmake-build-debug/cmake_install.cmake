@@ -1,4 +1,4 @@
-# Install script for directory: D:/user/desktop/C/AI_class
+# Install script for directory: D:/user/Desktop/C/cpp_machine_learning
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)
@@ -45,5 +45,5 @@ endif()
 
 string(REPLACE ";" "\n" CMAKE_INSTALL_MANIFEST_CONTENT
        "${CMAKE_INSTALL_MANIFEST_FILES}")
-file(WRITE "D:/user/desktop/C/AI_class/cmake-build-debug/${CMAKE_INSTALL_MANIFEST}"
+file(WRITE "D:/user/Desktop/C/cpp_machine_learning/cmake-build-debug/${CMAKE_INSTALL_MANIFEST}"
      "${CMAKE_INSTALL_MANIFEST_CONTENT}")
