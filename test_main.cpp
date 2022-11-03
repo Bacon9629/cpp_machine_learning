@@ -13,18 +13,6 @@ public:
     size_t shape[4] = {0, 0, 0, 0};
     size_t _a[4] = {0, 0, 0, 0};
 
-    Matrix() {
-        init(1, 1, 0);
-    }
-
-//    Matrix(vector<vector<double>> _vector){
-//        init(std::move(_vector));
-//    }
-
-    Matrix(size_t row, size_t col, double init_val){
-        init(row, col, init_val);
-    }
-
     inline static double get(Matrix &_matrix, size_t a, size_t b, size_t c, size_t d){
         size_t *_a = _matrix._a;
         return _matrix.matrix[a * _a[0] + b * _a[1] + c * _a[2] + d * _a[3]];
@@ -35,29 +23,38 @@ public:
         return _matrix.matrix[c * _a[2] + d * _a[3]];
     }
 
-    inline static size_t row(Matrix *_matrix){
-        return _matrix->shape[2];
+    inline static double* get_point(Matrix &_matrix, size_t a, size_t b, size_t c, size_t d){
+        size_t *_a = _matrix._a;
+        return _matrix.matrix + a * _a[0] + b * _a[1] + c * _a[2] + d * _a[3];
     }
 
-    inline static size_t col(Matrix *_matrix){
-        return _matrix->shape[3];
+    inline static double* get_point(Matrix &_matrix, size_t row, size_t col){
+        size_t *_a = _matrix._a;
+        return _matrix.matrix + row * _a[2] + col * _a[3];
     }
 
     // 取 start 到 end - 1 的row
-    inline static Matrix getRow(Matrix &_matrix, size_t start, size_t end){
-        if (end > _matrix.row() || start < 0){
-            cout << "shape_wrong: Matrix getRow, start: " << start
-                 << "  , end: " << end << endl;
+    inline static Matrix getRow(Matrix &_matrix, size_t start_row, size_t end_row){
+        if (
+                start_row > _matrix.shape[2] || end_row > _matrix.shape[2] ||
+                _matrix.shape[0] != 0 || end_row < start_row
+                )
+        {
+            cout << "shape_wrong: Matrix getRow" << endl;
         }
-        vector<vector<double>> result(_matrix.matrix.begin() + start, _matrix.matrix.begin() + end);
-        return Matrix(result);
+        size_t row_size = end_row - start_row;
+        size_t mem_size = sizeof(double) * row_size * _matrix.shape[3];
+        double* temp = (double*) malloc(mem_size);
+        memcpy(temp, Matrix::get_point(_matrix, start_row, 0), mem_size);
+
+        return Matrix(temp, row_size, _matrix.shape[3]);
     }
 
-    static Matrix dot(Matrix *matrix_a, Matrix *matrix_b){
-        size_t row_a = Matrix::row(matrix_a);
-        size_t col_a = Matrix::col(matrix_a);
-        size_t row_b = Matrix::row(matrix_b);
-        size_t col_b = Matrix::col(matrix_b);
+    static Matrix dot(Matrix &matrix_a, Matrix &matrix_b){
+        size_t row_a = matrix_a.shape[2];
+        size_t col_a = matrix_a.shape[3];
+        size_t row_b = matrix_b.shape[2];
+        size_t col_b = matrix_b.shape[3];
 
         if (col_a != row_b){
             std::cout << "shape wrong" << std::endl;
@@ -181,15 +178,57 @@ public:
         return result_matrix;
     }
 
-    void init(double* _vector){
-//        this->matrix = {_vector.begin(), _vector.end()};
-//        shape[0] = _vector.size();
-//        shape[1] = _vector[0].size();
+    Matrix(size_t row, size_t col) {
+        init((size_t)0, (size_t)0, row, col, 0);
     }
 
-    void init(size_t row, size_t col, double init_val){
-        vector<vector<double>> _vector = vector<vector<double>>(row, vector<double>(col, init_val));
-        init(_vector);
+    Matrix(size_t row, size_t col, double init_val){
+        init((size_t)0, (size_t)0, row, col, init_val);
+    }
+
+    Matrix(double* _matrix_point, size_t row, size_t col){
+        init(_matrix_point, 0, 0, row, col);
+    }
+
+    Matrix(size_t a, size_t b, size_t c, size_t d, double init_val){
+        init(a, b, c, d, init_val);
+    }
+
+    Matrix(double* _matrix_point, size_t a, size_t b, size_t c, size_t d){
+        init(_matrix_point, a, b, c, d);
+    }
+
+    void init(double* _matrix_point, size_t a, size_t b, size_t c, size_t d){
+        size_t size = a * b * c * d;
+        shape[3] = d;
+        shape[2] = c;
+        shape[1] = b;
+        shape[0] = a;
+        _a[3] = 1;
+        _a[2] = d;
+        _a[1] = d * c;
+        _a[0] = b * d * c;
+        if (_matrix_point == NULL){
+            matrix = (double*) calloc(sizeof(double), size);
+        }else{
+            matrix = _matrix_point;
+        }
+    }
+
+    void init(size_t a, size_t b, size_t c, size_t d, double init_val){
+        size_t size = a * b * c * d;
+        shape[3] = d;
+        shape[2] = c;
+        shape[1] = b;
+        shape[0] = a;
+        _a[3] = 1;
+        _a[2] = d;
+        _a[1] = d * c;
+        _a[0] = b * d * c;
+        matrix = (double*) calloc(sizeof(double), size);
+        if (init_val != 0){
+            Matrix::add(init_val);
+        }
     }
 
     inline size_t row() {
