@@ -1,35 +1,46 @@
 #include <iostream>
 #include <time.h>
-//#include <utility>
-#include <vector>
 #include <cstdlib>
 #include <cmath>
+#include <cassert>
+//#include <vector>
 
 using namespace std;
 
 class Matrix{
+private:
 public:
-    vector<vector<double>> matrix;
-    size_t shape[2] = {0, 0};
+    double *matrix;
+    size_t shape[4] = {0, 0, 0, 0};
+    size_t _a[4] = {0, 0, 0, 0};
 
     Matrix() {
         init(1, 1, 0);
     }
 
-    Matrix(vector<vector<double>> _vector){
-        init(std::move(_vector));
-    }
+//    Matrix(vector<vector<double>> _vector){
+//        init(std::move(_vector));
+//    }
 
     Matrix(size_t row, size_t col, double init_val){
         init(row, col, init_val);
     }
 
+    inline static double get(Matrix &_matrix, size_t a, size_t b, size_t c, size_t d){
+        size_t *_a = _matrix._a;
+        return _matrix.matrix[a * _a[0] + b * _a[1] + c * _a[2] + d * _a[3]];
+    }
+    inline static double get(Matrix &_matrix, size_t c, size_t d){
+        size_t *_a = _matrix._a;
+        return _matrix.matrix[c * _a[2] + d * _a[3]];
+    }
+
     inline static size_t row(Matrix *_matrix){
-        return _matrix->shape[0];
+        return _matrix->shape[2];
     }
 
     inline static size_t col(Matrix *_matrix){
-        return _matrix->shape[1];
+        return _matrix->shape[3];
     }
 
     // 取 start 到 end - 1 的row
