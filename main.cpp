@@ -3,44 +3,33 @@
 #include <cstdlib>
 #include <cmath>
 #include <cassert>
-//#include <vector>
+#include <vector>
 
 using namespace std;
 
 class Matrix{
-private:
 public:
-    double *matrix;
-    size_t shape[4] = {0, 0, 0, 0};
-    size_t _a[4] = {0, 0, 0, 0};
+    vector<vector<double>> matrix;
+    size_t shape[2] = {0, 0};
 
     Matrix() {
         init(1, 1, 0);
     }
 
-//    Matrix(vector<vector<double>> _vector){
-//        init(std::move(_vector));
-//    }
+    Matrix(vector<vector<double>> _vector){
+        init(std::move(_vector));
+    }
 
     Matrix(size_t row, size_t col, double init_val){
         init(row, col, init_val);
     }
 
-    inline static double get(Matrix &_matrix, size_t a, size_t b, size_t c, size_t d){
-        size_t *_a = _matrix._a;
-        return _matrix.matrix[a * _a[0] + b * _a[1] + c * _a[2] + d * _a[3]];
-    }
-    inline static double get(Matrix &_matrix, size_t c, size_t d){
-        size_t *_a = _matrix._a;
-        return _matrix.matrix[c * _a[2] + d * _a[3]];
-    }
-
     inline static size_t row(Matrix *_matrix){
-        return _matrix->shape[2];
+        return _matrix->shape[0];
     }
 
     inline static size_t col(Matrix *_matrix){
-        return _matrix->shape[3];
+        return _matrix->shape[1];
     }
 
     // 取 start 到 end - 1 的row
@@ -549,13 +538,63 @@ public:
     ActiveFunc *active_func;
     Optimizer *optimizer;
 
-    virtual Matrix forward(Matrix x) = 0;
-    virtual Matrix backward(Matrix _delta) = 0;
+    virtual Matrix forward(Matrix _x, bool is_train) = 0;
+    virtual Matrix backward(Matrix _delta, bool is_train) = 0;
     virtual void update() = 0;
+};
+
+class DropoutLayer:public Layer{
+public:
+
+    double dropout_probability;
+    Matrix dropout_matrix;
+
+    DropoutLayer(size_t input_size, size_t output_size, ActiveFunc *_activeFunc, Optimizer *_optimizer, double _dropout_probability){
+        init(input_size, output_size, _activeFunc, _optimizer);
+        dropout_probability = _dropout_probability;
+    }
+
+    Matrix construct_random_bool_list(size_t row, size_t col, double probability){
+        Matrix result = Matrix(row, col, 0);
+        double a = 0;
+        double b = 0;
+        for(size_t i = 0; i < row; i++){
+            for(size_t j = 0; j < col; j++){
+                result.matrix[i][j] = (double(rand()) / RAND_MAX < probability) ? 0 : 1;
+            }
+        }
+        return result;
+    }
+
+    void init(size_t input_size, size_t output_size, ActiveFunc *_activeFunc, Optimizer *_optimizer){
+    }
+
+    Matrix forward(Matrix _x, bool is_train) override {
+        x = _x;
+        if (!is_train){
+            return Matrix::times(&x, (1-dropout_probability));
+        }
+
+        dropout_matrix = construct_random_bool_list(x.row(), x.col(), dropout_probability);
+        x = Matrix::times(&x, &dropout_matrix);
+        return x;
+    }
+
+    Matrix backward(Matrix _delta, bool is_train) override {
+        if (!is_train){
+            return _delta;
+        }
+        delta = Matrix::times(&_delta, &dropout_matrix);
+        return delta;
+    }
+
+    void update() override {
+    }
 };
 
 class DenseLayer : public Layer{
 public:
+
 //    Matrix x;  // 輸入
 //    Matrix y;  // y = xw+b
 //    Matrix u;  // u = active_func(y)；此層輸出(下一層的輸入)
@@ -583,7 +622,7 @@ public:
         optimizer = _optimizer;
     }
 
-    Matrix forward(Matrix _x) override{
+    Matrix forward(Matrix _x, bool is_train) override{
         x = _x;
         u = Matrix::dot(&x, &w);
         u = Matrix::add(&u, &b);
@@ -591,26 +630,16 @@ public:
         return y;
     }
 
-    Matrix backward(Matrix _delta) override{
-//         x.T dot (_delta * active_func->func_backward(x))
-
-        // 初始化gradient_w and b
-        grad_w = Matrix(grad_w.row(), grad_w.col(), 0);
-        grad_b = Matrix(grad_b.row(), grad_b.col(), 0);
+    Matrix backward(Matrix _delta, bool is_train) override{
 
         Matrix active_func_back = active_func->func_backward(u);
         Matrix my_delta = Matrix::times(&_delta, &active_func_back);
 
         Matrix x_t = x.transpose();
-        Matrix _grad_w = Matrix::dot(&x_t, &my_delta);
-        grad_w = Matrix::add(&grad_w, &_grad_w);
+        grad_w = Matrix::dot(&x_t, &my_delta);
 
-        Matrix _grad_b = my_delta;
-        grad_b = Matrix::add(&grad_b, &_grad_b);
-//1*30 3*30 =
         Matrix w_t = w.transpose();
         delta = Matrix::dot(&my_delta, &w_t);
-//        grad_w.print_matrix();
         return delta;
     }
 
@@ -670,15 +699,15 @@ public:
             }
         }
     }
-    inline void train_one_time(Matrix &x, Matrix &target){  // 這裡客製化網路輸入
 
+    inline void train_one_time(Matrix &x, Matrix &target){  // 這裡客製化網路輸入
         Matrix y = x;
         for (size_t i=0;i<layers.size();++i){
-            y = layers[i]->forward(y);
+            y = layers[i]->forward(y, true);
         }
         Matrix delta = lossFunc->backward(y, target);
         for (size_t i = 0; i < layers.size(); i++){  // 這裡會減到零以下，因此不能使用無號數
-            delta = layers[layers.size() - 1 - i]->backward(delta);
+            delta = layers[layers.size() - 1 - i]->backward(delta, true);
         }
 
         for (size_t i = 0; i < layers.size(); ++i){
@@ -689,7 +718,7 @@ public:
     void show(Matrix &x, Matrix &target){
         Matrix y = x;
         for (size_t i=0;i<layers.size();++i){
-            y = layers[i]->forward(y);
+            y = layers[i]->forward(y, false);
         }
 
         cout << "\nlabel: " << endl;
@@ -800,9 +829,10 @@ int main() {
     MyFrame frame = MyFrame(new CrossEntropy_SoftMax, -1);
 
 
-    frame.add(new DenseLayer(25, 64, &relu, new SGD(0.1)));
+    frame.add(new DenseLayer(25, 32, &relu, new SGD(0.1)));
 //    frame.add(new DenseLayer(64, 32, &softmax, new SGD(0.1)));
-    frame.add(new DenseLayer(64, 5, &softmax, new SGD(0.1)));
+    frame.add(new DropoutLayer(32, 32, &softmax, new SGD(0.001), 0.5));
+    frame.add(new DenseLayer(32, 5, &softmax, new SGD(0.1)));
 
     frame.train(6000, x, x_target);
 

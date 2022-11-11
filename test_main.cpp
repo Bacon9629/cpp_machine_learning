@@ -4,56 +4,74 @@
 #include <cmath>
 #include <cassert>
 //#include <vector>
-//
+
 using namespace std;
-//
-//class Matrix{
-//public:
-//    double *matrix;
-//    size_t shape[4] = {0, 0, 0, 0};
-//    size_t _a[4] = {0, 0, 0, 0};
-//
-//    inline static double get(Matrix &_matrix, size_t a, size_t b, size_t c, size_t d){
-//        size_t *_a = _matrix._a;
-//        return _matrix.matrix[a * _a[0] + b * _a[1] + c * _a[2] + d * _a[3]];
-//    }
-//
-//    inline static double get(Matrix &_matrix, size_t row, size_t col){
-//        size_t *_a = _matrix._a;
-//        return _matrix.matrix[row * _a[2] + col * _a[3]];
-//    }
-//
-//    inline static double* get_point(Matrix &_matrix, size_t a, size_t b, size_t c, size_t d){
-//        size_t *_a = _matrix._a;
-//        return _matrix.matrix + a * _a[0] + b * _a[1] + c * _a[2] + d * _a[3];
-//    }
-//
-//    inline static double* get_point(Matrix &_matrix, size_t row, size_t col){
-//        size_t *_a = _matrix._a;
-//        return _matrix.matrix + row * _a[2] + col * _a[3];
-//    }
-//
-//    // 取 start 到 end - 1 的row
-//    inline static Matrix getRow(Matrix &_matrix, size_t start_row, size_t end_row){
-//        if (
-//                start_row > _matrix.shape[2] || end_row > _matrix.shape[2] ||
-//                _matrix.shape[0] != 0 || end_row < start_row
-//                )
-//        {
-//            cout << "shape_wrong: Matrix getRow" << endl;
-//        }
-//        size_t row_size = end_row - start_row;
+
+class Matrix{
+private:
+    Matrix* calculate_check_need_copy(){
+        Matrix *result = this;
+        if (!is_cal_result){
+            result = copy();
+            result->is_cal_result = true;
+        }
+        return result;
+    }
+
+public:
+    double *matrix;
+    size_t shape[4] = {0, 0, 0, 0};
+    size_t index_reflec_1d_[4] = {0, 0, 0, 0};
+    size_t size_1d = 1;
+    bool is_cal_result = false;  // 此matrix是計算中得出的結果
+
+    inline static double get(Matrix &_matrix, size_t a, size_t b, size_t c, size_t d){
+        size_t *_a = _matrix.index_reflec_1d_;
+        return _matrix.matrix[a * _a[0] + b * _a[1] + c * _a[2] + d * _a[3]];
+    }
+
+    inline static double get(Matrix &_matrix, size_t row, size_t col){
+        size_t *_a = _matrix.index_reflec_1d_;
+        return _matrix.matrix[row * _a[2] + col * _a[3]];
+    }
+
+    inline static double* get_point(Matrix &_matrix, size_t a, size_t b, size_t c, size_t d){
+        size_t *_a = _matrix.index_reflec_1d_;
+        return _matrix.matrix + a * _a[0] + b * _a[1] + c * _a[2] + d * _a[3];
+    }
+
+    inline static double* get_point(Matrix &_matrix, size_t row, size_t col){
+        size_t *_a = _matrix.index_reflec_1d_;
+        return _matrix.matrix + row * _a[2] + col * _a[3];
+    }
+
+    // 取 start 到 end - 1 的row
+    inline static Matrix getRow(Matrix &_matrix, size_t start_row, size_t end_row){
+        if (
+                start_row > _matrix.shape[2] || end_row > _matrix.shape[2] ||
+                _matrix.shape[0] != 0 || end_row < start_row
+                )
+        {
+            cout << "shape_wrong: Matrix getRow" << endl;
+        }
+        size_t row_size = end_row - start_row;
 //        size_t mem_size = sizeof(double) * row_size * _matrix.shape[3];
 //        double* temp = (double*) malloc(mem_size);
 //        memcpy(temp, Matrix::get_point(_matrix, start_row, 0), mem_size);
-//
-//        return Matrix(temp, row_size, _matrix.shape[3]);
-//    }
-//
+        Matrix *result = new Matrix(
+                Matrix::get_point(_matrix, start_row, 0),
+                row_size,
+                _matrix.shape[3]);
+
+        return *result;
+    }
+
 //    static Matrix copy(Matrix &_matrix){
-//        return Matrix(_matrix.matrix, _matrix.shape[0], _matrix.shape[1], _matrix.shape[2], _matrix.shape[3]);;
+//        Matrix *result = new Matrix(_matrix.matrix, _matrix.shape[0], _matrix.shape[1], _matrix.shape[2], _matrix.shape[3]);
+//        cout << "ttt " << result << endl;
+//        return *result;
 //    }
-//
+
 //    static Matrix dot(Matrix &matrix_a, Matrix &matrix_b){
 //        size_t row_a = matrix_a.shape[2];
 //        size_t col_a = matrix_a.shape[3];
@@ -131,145 +149,157 @@ using namespace std;
 //        }
 //        return result;
 //    }
-////
-////    inline static Matrix add(Matrix *matrix, double val){
-////        Matrix val_matrix(matrix->row(), matrix->col(), val);
-////        Matrix result_matrix(Matrix::add(matrix, &val_matrix));
-////        return result_matrix;
-////    }
-////
-////    static Matrix reduce(Matrix *matrix_a, Matrix *matrix_b){
-////        Matrix _temp_b;
-////        if(matrix_a->row() != matrix_b->row()){
-////            _temp_b = expand_row(matrix_a, matrix_b);
-////            matrix_b = &_temp_b;
-////        }
-////
-////        if (matrix_a->row() != matrix_b->row() || matrix_a->col() != matrix_b->col()){
-////            std::cout << "shape wrong" << std::endl;
-////        }
-////        Matrix result(matrix_a->row(), matrix_b->col(), 0);
-////        for (int i=0;i<result.row();i++){
-////            for (int j=0;j<result.col();j++){
-////                result.matrix[i][j] = matrix_a->matrix[i][j] - matrix_b->matrix[i][j];
-////            }
-////        }
-////        return result;
-////    }
-////
-////    inline static Matrix reduce(Matrix *matrix, double val){
-////        Matrix val_matrix(matrix->row(), matrix->col(), val);
-////        Matrix result_matrix(Matrix::reduce(matrix, &val_matrix));
-////        return result_matrix;
-////    }
-////
-////    inline static Matrix times(Matrix *matrix_a, Matrix *matrix_b){
-////        Matrix _temp_b;
-////        if(matrix_a->row() != matrix_b->row()){
-////            _temp_b = expand_row(matrix_a, matrix_b);
-////            matrix_b = &_temp_b;
-////        }
-////
-////        Matrix result(matrix_a->row(), matrix_a->col(), 0);
-////        for (int i=0;i<result.row();i++){
-////            for (int j=0;j<result.col();j++){
-////                result.matrix[i][j] = matrix_a->matrix[i][j] * matrix_b->matrix[i][j];
-////            }
-////        }
-////        return result;
-////    }
-////
-////    inline static Matrix times(Matrix *matrix, double val){
-////        Matrix val_matrix(matrix->row(), matrix->col(), val);
-////        Matrix result_matrix(Matrix::times(matrix, &val_matrix));
-////        return result_matrix;
-////    }
 //
-//    Matrix(size_t row, size_t col) {
-//        init((size_t)0, (size_t)0, row, col, 0);
+//    inline static Matrix add(Matrix *matrix, double val){
+//        Matrix val_matrix(matrix->row(), matrix->col(), val);
+//        Matrix result_matrix(Matrix::add(matrix, &val_matrix));
+//        return result_matrix;
 //    }
 //
-//    Matrix(size_t row, size_t col, double init_val){
-//        init((size_t)0, (size_t)0, row, col, init_val);
-//    }
-//
-//    Matrix(double* _matrix_point, size_t row, size_t col){
-//        init(_matrix_point, 0, 0, row, col);
-//    }
-//
-//    Matrix(size_t a, size_t b, size_t c, size_t d, double init_val){
-//        init(a, b, c, d, init_val);
-//    }
-//
-//    Matrix(double* _matrix_point, size_t a, size_t b, size_t c, size_t d){
-//        init(_matrix_point, a, b, c, d);
-//    }
-//
-//    void init(double* _matrix_point, size_t a, size_t b, size_t c, size_t d){
-//        size_t size = a * b * c * d;
-//        shape[3] = d;
-//        shape[2] = c;
-//        shape[1] = b;
-//        shape[0] = a;
-//        _a[3] = 1;
-//        _a[2] = d;
-//        _a[1] = d * c;
-//        _a[0] = b * d * c;
-//        if (_matrix_point == NULL){
-//            matrix = (double*) calloc(sizeof(double), size);
-//        }else{
-//            memcpy(matrix, _matrix_point, sizeof(double) * size);
+//    static Matrix reduce(Matrix *matrix_a, Matrix *matrix_b){
+//        Matrix _temp_b;
+//        if(matrix_a->row() != matrix_b->row()){
+//            _temp_b = expand_row(matrix_a, matrix_b);
+//            matrix_b = &_temp_b;
 //        }
-//    }
 //
-//    void init(size_t a, size_t b, size_t c, size_t d, double init_val){
-//        size_t size = a * b * c * d;
-//        shape[3] = d;
-//        shape[2] = c;
-//        shape[1] = b;
-//        shape[0] = a;
-//        _a[3] = 1;
-//        _a[2] = d;
-//        _a[1] = d * c;
-//        _a[0] = b * d * c;
-//        matrix = (double*) calloc(sizeof(double), size);
-//        if (init_val != 0){
-//            Matrix::add(init_val);
+//        if (matrix_a->row() != matrix_b->row() || matrix_a->col() != matrix_b->col()){
+//            std::cout << "shape wrong" << std::endl;
 //        }
+//        Matrix result(matrix_a->row(), matrix_b->col(), 0);
+//        for (int i=0;i<result.row();i++){
+//            for (int j=0;j<result.col();j++){
+//                result.matrix[i][j] = matrix_a->matrix[i][j] - matrix_b->matrix[i][j];
+//            }
+//        }
+//        return result;
 //    }
 //
-//    inline double get(size_t a, size_t b, size_t c, size_t d){
-//        Matrix::get(*this, a, b, c, d);
+//    inline static Matrix reduce(Matrix *matrix, double val){
+//        Matrix val_matrix(matrix->row(), matrix->col(), val);
+//        Matrix result_matrix(Matrix::reduce(matrix, &val_matrix));
+//        return result_matrix;
 //    }
 //
-//    inline double get(size_t row, size_t col){
-//        Matrix::get(*this, row, col);
+//    inline static Matrix times(Matrix *matrix_a, Matrix *matrix_b){
+//        Matrix _temp_b;
+//        if(matrix_a->row() != matrix_b->row()){
+//            _temp_b = expand_row(matrix_a, matrix_b);
+//            matrix_b = &_temp_b;
+//        }
+//
+//        Matrix result(matrix_a->row(), matrix_a->col(), 0);
+//        for (int i=0;i<result.row();i++){
+//            for (int j=0;j<result.col();j++){
+//                result.matrix[i][j] = matrix_a->matrix[i][j] * matrix_b->matrix[i][j];
+//            }
+//        }
+//        return result;
 //    }
 //
-//    inline double* get_point(size_t a, size_t b, size_t c, size_t d){
-//        Matrix::get_point(*this, a, b, c, d);
+//    inline static Matrix times(Matrix *matrix, double val){
+//        Matrix val_matrix(matrix->row(), matrix->col(), val);
+//        Matrix result_matrix(Matrix::times(matrix, &val_matrix));
+//        return result_matrix;
+//    }
+
+    Matrix(size_t row, size_t col) {
+        init((size_t)0, (size_t)0, row, col, 0);
+    }
+
+    Matrix(size_t row, size_t col, double init_val){
+        init((size_t)0, (size_t)0, row, col, init_val);
+    }
+
+    Matrix(double* _matrix_point, size_t row, size_t col){
+        init(_matrix_point, 0, 0, row, col);
+    }
+
+    Matrix(size_t a, size_t b, size_t c, size_t d, double init_val){
+        init(a, b, c, d, init_val);
+    }
+
+    Matrix(double* _matrix_point, size_t a, size_t b, size_t c, size_t d){
+        init(_matrix_point, a, b, c, d);
+    }
+
+    void init(double* _matrix_point, size_t a, size_t b, size_t c, size_t d){
+        size_t temp[4] = {a, b, c, d};
+        for (size_t i=0;i<4;i++){
+            size_1d *= temp[i] == 0 ? 1 : temp[i];
+        }
+        shape[3] = d;
+        shape[2] = c;
+        shape[1] = b;
+        shape[0] = a;
+        index_reflec_1d_[3] = 1;
+        index_reflec_1d_[2] = d;
+        index_reflec_1d_[1] = d * c;
+        index_reflec_1d_[0] = b * d * c;
+        matrix = (double*) calloc(size_1d, sizeof(double));
+        memcpy(matrix, _matrix_point, sizeof(double) * size_1d);
+
+        cout << "_matrix_point construct " << this << endl;
+    }
+
+    void init(size_t a, size_t b, size_t c, size_t d, double init_val){
+        size_t temp[4] = {a, b, c, d};
+        for (size_t i=0;i<4;i++){
+            size_1d *= temp[i] == 0 ? 1 : temp[i];
+        }
+        shape[3] = d;
+        shape[2] = c;
+        shape[1] = b;
+        shape[0] = a;
+        index_reflec_1d_[3] = 1;
+        index_reflec_1d_[2] = d;
+        index_reflec_1d_[1] = d * c;
+        index_reflec_1d_[0] = b * d * c;
+        matrix = (double*) calloc(size_1d, sizeof(double));
+        for (size_t i = 0; i < size_1d; i++){
+            matrix[i] = init_val;
+        }
+
+        cout << "init_val construct " << this << endl;
+    }
+
+    ~Matrix(){
+        cout << "free " << this << endl;
+        free(matrix);
+    }
+
+    inline double get(size_t a, size_t b, size_t c, size_t d){
+        return Matrix::get(*this, a, b, c, d);
+    }
+
+    inline double get(size_t row, size_t col){
+        return Matrix::get(*this, row, col);
+    }
+
+    inline double* get_point(size_t a, size_t b, size_t c, size_t d){
+        return Matrix::get_point(*this, a, b, c, d);
+    }
+
+    inline double* get_point(size_t row, size_t col){
+        return Matrix::get_point(*this, row, col);
+    }
+
+//    inline size_t row() {
+//        return Matrix::row(this);
 //    }
 //
-//    inline double* get_point(size_t row, size_t col){
-//        Matrix::get_point(*this, row, col);
+//    inline size_t col() {
+//        return Matrix::col(this);
 //    }
 //
-////    inline size_t row() {
-////        return Matrix::row(this);
-////    }
-////
-////    inline size_t col() {
-////        return Matrix::col(this);
-////    }
-////
-////    inline Matrix dot(Matrix *matrix_b) {
-////        return Matrix::dot(this, matrix_b);
-////    }
-////
-////    inline Matrix transpose() {
-////        return Matrix::transpose(this);
-////    }
-////
+//    inline Matrix dot(Matrix *matrix_b) {
+//        return Matrix::dot(this, matrix_b);
+//    }
+//
+//    inline Matrix transpose() {
+//        return Matrix::transpose(this);
+//    }
+//
 //    inline Matrix add(Matrix *_matrix) {
 //        return Matrix::add(this, _matrix);
 //    }
@@ -277,92 +307,111 @@ using namespace std;
 //    inline Matrix add(double val) {
 //        return Matrix::add(this, val);
 //    }
-////
-////    inline Matrix reduce(Matrix *_matrix) {
-////        return Matrix::reduce(this, _matrix);
-////    }
-////
-////    inline Matrix reduce(double val) {
-////        return Matrix::reduce(this, val);
-////    }
-////
-////    inline Matrix multiplication(Matrix *_matrix) {
-////        return Matrix::times(this, _matrix);
-////    }
-////
-////    inline Matrix multiplication(double val) {
-////        return Matrix::times(this, val);
-////    }
-////
-////    inline void random_matrix(){
-////        srand(time(NULL));
-////        for (int i=0;i<this->row();i++){
-////            for (int j=0;j<this->col();j++){
-////                matrix[i][j] = rand() / (RAND_MAX + 1.0) - 0.5;
-////            }
-////        }
-////    }
-////
-//    inline void print_matrix(){
-//        for (int i=0;i<shape[2];i++){
-//            for (int j=0;j<shape[3];j++){
-//                cout << get(i, j) << ", ";
+//
+//    inline Matrix reduce(Matrix *_matrix) {
+//        return Matrix::reduce(this, _matrix);
+//    }
+//
+//    inline Matrix reduce(double val) {
+//        return Matrix::reduce(this, val);
+//    }
+//
+//    inline Matrix multiplication(Matrix *_matrix) {
+//        return Matrix::times(this, _matrix);
+//    }
+//
+//    inline Matrix multiplication(double val) {
+//        return Matrix::times(this, val);
+//    }
+//
+//    inline void random_matrix(){
+//        srand(time(NULL));
+//        for (int i=0;i<this->row();i++){
+//            for (int j=0;j<this->col();j++){
+//                matrix[i][j] = rand() / (RAND_MAX + 1.0) - 0.5;
 //            }
-//            cout << endl;
 //        }
 //    }
-////
-////    inline void print_shape(){
-////        cout << "rol: " << row() << " col: " << col() << endl;
-////    }
 //
-//};
+    inline void print_matrix(){
+        for (int i=0;i<shape[2];i++){
+            for (int j=0;j<shape[3];j++){
+                cout << get(i, j) << ", ";
+            }
+            cout << endl;
+        }
+    }
+//
+//    inline void print_shape(){
+//        cout << "rol: " << row() << " col: " << col() << endl;
+//    }
 
-class TEST{
-public:
-    int *a;
-    TEST(int _a){
-        a = (int*) malloc(sizeof(int));
-        *a = _a;
-        cout << "construct " << a << endl;
+    inline Matrix* copy(){
+        Matrix *result = new Matrix(matrix, shape[0], shape[1], shape[2], shape[3]);
+        cout << "copy " << result << endl;
+        return result;
+//        return Matrix::copy(*this);
     }
-    ~TEST(){
-        cout << "free " << a << endl;
-        free(a);
+
+    Matrix* operator+(double a){
+        Matrix *result = calculate_check_need_copy();
+        cout << "add " << result << endl;
+        for (size_t i = 0; i < size_1d; i++){
+            result->matrix[i] += a;
+        }
+        return result;
     }
+
+    Matrix* operator+(Matrix *_matrix){
+        Matrix *result = calculate_check_need_copy();
+        cout << "add " << result << endl;
+        for (size_t i = 0; i < size_1d; i++){
+            result->matrix[i] += _matrix->matrix[i];
+        }
+        return result;
+    }
+
+    Matrix* operator+(Matrix &_matrix){
+        Matrix *result = calculate_check_need_copy();
+        cout << "add " << result << endl;
+        for (size_t i = 0; i < size_1d; i++){
+            result->matrix[i] += _matrix.matrix[i];
+        }
+        return result;
+    }
+
+    Matrix operator=(Matrix &_matrix){
+        if (_matrix.is_cal_result){
+
+        }else{
+
+        }
+    }
+
 };
 
+
 int main(){
-//    Matrix a = Matrix(10, 10, 0);
-//    double count = 0;
-//    for (int i=0; i<a.shape[2]; i++){
-//        for (int j=0; j<a.shape[3]; j++) {
-//            count += 1;
-//            *(a.get_point(i, j)) = count;
-//        }
-//    }
-//
+    Matrix a = Matrix(5, 5, 3);
+    Matrix b = a + 3;
+////    Matrix c = b + a;
 //    a.print_matrix();
+//    b.print_matrix();
+////    c.print_matrix();
 //
-//    TEST *t = new TEST(1);
-//    cout << (*t).a << " " << *(*t).a << endl;
-//    delete(t);
-//    t = new TEST(10);
-//    cout << (*t).a << " " << *(*t).a << endl;
+//    int aa = 0;
 
-    TEST *t = new TEST(1);
-//    int *p = t.a;
-//    cout << (t).a << " " << *((t).a) << endl;
-    cout << (*t).a << " " << *((*t).a) << endl;
-    delete(t);
-    t = new TEST(10);
-    cout << (*t).a << " " << *((*t).a) << endl;
-//    cout << t.a << " " << *t.a << endl;
-//    cout << p << " " << *p << endl;
+    cout << "a " << &a << endl;
+    cout << "b " << &b << endl;
 
+//    cin >> aa;
 
-//    int a;
-//    cin >> a;
+//    Matrix aa = a.copy();
+//    cout << &aa << endl;
+
+    int aaaaa = 0;
+    cin >> aaaaa;
+
 
     return 0;
 }
