@@ -72,36 +72,35 @@ public:
 //        return *result;
 //    }
 
-//    static Matrix dot(Matrix &matrix_a, Matrix &matrix_b){
-//        size_t row_a = matrix_a.shape[2];
-//        size_t col_a = matrix_a.shape[3];
-//        size_t row_b = matrix_b.shape[2];
-//        size_t col_b = matrix_b.shape[3];
-//
-//        if (col_a != row_b){
-//            std::cout << "shape wrong" << std::endl;
-//            assert("matrix error - dot");
-//        }
-//
-//        const size_t row_result = row_a;
-//        const size_t col_result = col_b;
-//        Matrix result = Matrix(row_result, col_result, 0);
-////        vector<vector<double>> result(row_result, vector<double>(col_result));
-//
-//        for (int r = 0; r < row_result; r++) {
-//            for (int c = 0; c < col_result; c++) {
-//                // 指定在result內的哪個位置
-//                // 接下來依照指定的result位置取出a、b的值來做計算
-//
-//                for (int i = 0; i < col_a; i++) {
-//                    *(result.get_point(r, c)) += matrix_a.get(r, i) * matrix_b.get(i, c);
-////                    result[r][c] += matrix_a->matrix[r][i] * matrix_b->matrix[i][c];
-//                }
-//
-//            }
-//        }
-//        return result;
-//    }
+    static Matrix& dot(Matrix &matrix_a, Matrix &matrix_b){
+        size_t row_a = matrix_a.shape[2];
+        size_t col_a = matrix_a.shape[3];
+        size_t row_b = matrix_b.shape[2];
+        size_t col_b = matrix_b.shape[3];
+
+        if (col_a != row_b){
+            std::cout << "shape wrong" << std::endl;
+            assert("matrix error - dot");
+        }
+
+        const size_t row_result = row_a;
+        const size_t col_result = col_b;
+        Matrix *result = new Matrix(row_result, col_result, 0);
+
+        for (int r = 0; r < row_result; r++) {
+            for (int c = 0; c < col_result; c++) {
+                // 指定在result內的哪個位置
+                // 接下來依照指定的result位置取出a、b的值來做計算
+
+                for (int i = 0; i < col_a; i++) {
+                    *(result->get_point(r, c)) += matrix_a.get(r, i) * matrix_b.get(i, c);
+//                    result[r][c] += matrix_a->matrix[r][i] * matrix_b->matrix[i][c];
+                }
+
+            }
+        }
+        return *result;
+    }
 //
 //    inline static Matrix transpose(Matrix &_matrix) {
 //        if (_matrix.shape[0] != 0){
@@ -364,31 +363,31 @@ public:
 //        return Matrix::copy(*this);
     }
 
-    Matrix* operator+ (double a){
+    Matrix& operator+ (double a){
         Matrix *result = calculate_check_need_copy();
         cout << "add " << result << endl;
         for (size_t i = 0; i < size_1d; i++){
             result->matrix[i] += a;
         }
-        return result;
+        return *result;
     }
 
-    Matrix* operator+ (Matrix *_matrix){
+    Matrix& operator+ (Matrix *_matrix){
         Matrix *result = calculate_check_need_copy();
         cout << "add " << this << " + " << result << endl;
         for (size_t i = 0; i < size_1d; i++){
             result->matrix[i] += _matrix->matrix[i];
         }
-        return result;
+        return *result;
     }
 
-    Matrix* operator+ (Matrix &_matrix){
+    Matrix& operator+ (Matrix &_matrix){
         Matrix *result = calculate_check_need_copy();
         cout << "add " << this << " + " << result << endl;
         for (size_t i = 0; i < size_1d; i++){
             result->matrix[i] += _matrix.matrix[i];
         }
-        return result;
+        return *result;
     }
 
     void operator= (Matrix &_matrix){
@@ -410,18 +409,6 @@ public:
             memcpy(matrix, _matrix.matrix, sizeof(double) * size_1d);
         }
 
-
-//        if (_matrix.is_cal_result){
-//            _matrix.is_cal_result = false;
-//            return _matrix;
-////            matrix = _matrix.matrix;
-////            _matrix.matrix = NULL;
-////            delete &_matrix;
-//        }else{
-////            Matrix *result = _matrix.copy();
-//            return *(_matrix.copy());
-////            memcpy(matrix, _matrix.matrix, sizeof(double) * size_1d);
-//        }
     }
 
     void operator= (Matrix *_matrix){
@@ -452,8 +439,10 @@ int main(){
     Matrix c = Matrix(5, 5, 3);
     Matrix b;
 //    b = a;
-    b = a + c;
-//    b = a + 3;
+//    b = a + c;
+
+    b = Matrix::dot(a, c);
+
     cout << "a " << endl;
     a.print_matrix();
     cout << "b " << endl;
