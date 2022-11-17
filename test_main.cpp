@@ -52,7 +52,7 @@ public:
                 _matrix.shape[0] != 0 || end_row < start_row
                 )
         {
-            // cout << "shape_wrong: Matrix getRow" << endl;
+            cout << "shape_wrong: Matrix getRow" << endl;
         }
         size_t row_size = end_row - start_row;
 //        size_t mem_size = sizeof(double) * row_size * _matrix.shape[3];
@@ -68,7 +68,7 @@ public:
 
 //    static Matrix copy(Matrix &_matrix){
 //        Matrix *result = new Matrix(_matrix.matrix, _matrix.shape[0], _matrix.shape[1], _matrix.shape[2], _matrix.shape[3]);
-//        // cout << "ttt " << result << endl;
+//        cout << "ttt " << result << endl;
 //        return *result;
 //    }
 
@@ -79,7 +79,7 @@ public:
 //        size_t col_b = matrix_b.shape[3];
 //
 //        if (col_a != row_b){
-//            std::// cout << "shape wrong" << std::endl;
+//            std::cout << "shape wrong" << std::endl;
 //            assert("matrix error - dot");
 //        }
 //
@@ -138,7 +138,7 @@ public:
 //        }
 //
 //        if (matrix_a->row() != matrix_b->row() || matrix_a->col() != matrix_b->col()){
-//            std::// cout << "shape wrong" << std::endl;
+//            std::cout << "shape wrong" << std::endl;
 //        }
 //
 //        Matrix result(matrix_a->row(), matrix_b->col(), 0);
@@ -164,7 +164,7 @@ public:
 //        }
 //
 //        if (matrix_a->row() != matrix_b->row() || matrix_a->col() != matrix_b->col()){
-//            std::// cout << "shape wrong" << std::endl;
+//            std::cout << "shape wrong" << std::endl;
 //        }
 //        Matrix result(matrix_a->row(), matrix_b->col(), 0);
 //        for (int i=0;i<result.row();i++){
@@ -244,7 +244,7 @@ public:
 //        matrix = (double*) calloc(size_1d, sizeof(double));
         memcpy(matrix, _matrix_point, sizeof(double) * size_1d);
 
-        // cout << "_matrix_point construct " << this << endl;
+        cout << "_matrix_point construct " << this << endl;
     }
 
     void init(size_t a, size_t b, size_t c, size_t d, double init_val){
@@ -268,11 +268,11 @@ public:
             }
         }
 
-        // cout << "init_val construct " << this << endl;
+        cout << "init_val construct " << this << endl;
     }
 
     ~Matrix(){
-        // cout << "free " << this << endl;
+        cout << "free " << this << endl;
         if (matrix != NULL){
 //            free(matrix);
             delete []matrix;
@@ -347,26 +347,26 @@ public:
     inline void print_matrix(){
         for (int i=0;i<shape[2];i++){
             for (int j=0;j<shape[3];j++){
-                // cout << get(i, j) << ", ";
+                cout << get(i, j) << ", ";
             }
-            // cout << endl;
+            cout << endl;
         }
     }
 //
 //    inline void print_shape(){
-//        // cout << "rol: " << row() << " col: " << col() << endl;
+//        cout << "rol: " << row() << " col: " << col() << endl;
 //    }
 
     inline Matrix* copy(){
         Matrix *result = new Matrix(matrix, shape[0], shape[1], shape[2], shape[3]);
-        // cout << "copy " << result << endl;
+        cout << "copy " << result << endl;
         return result;
 //        return Matrix::copy(*this);
     }
 
     Matrix* operator+ (double a){
         Matrix *result = calculate_check_need_copy();
-        // cout << "add " << result << endl;
+        cout << "add " << result << endl;
         for (size_t i = 0; i < size_1d; i++){
             result->matrix[i] += a;
         }
@@ -375,7 +375,7 @@ public:
 
     Matrix* operator+ (Matrix *_matrix){
         Matrix *result = calculate_check_need_copy();
-        // cout << "add " << this << " + " << result << endl;
+        cout << "add " << this << " + " << result << endl;
         for (size_t i = 0; i < size_1d; i++){
             result->matrix[i] += _matrix->matrix[i];
         }
@@ -384,7 +384,7 @@ public:
 
     Matrix* operator+ (Matrix &_matrix){
         Matrix *result = calculate_check_need_copy();
-        // cout << "add " << this << " + " << result << endl;
+        cout << "add " << this << " + " << result << endl;
         for (size_t i = 0; i < size_1d; i++){
             result->matrix[i] += _matrix.matrix[i];
         }
@@ -454,21 +454,21 @@ int main(){
 //    b = a;
     b = a + c;
 //    b = a + 3;
-    // cout << "a " << endl;
-//    a.print_matrix();
-    // cout << "b " << endl;
-//    b.print_matrix();
-    // cout << "c " << endl;
-//    c.print_matrix();
+    cout << "a " << endl;
+    a.print_matrix();
+    cout << "b " << endl;
+    b.print_matrix();
+    cout << "c " << endl;
+    c.print_matrix();
 
-    // cout << "a " << &a << endl;
-    // cout << "b " << &b << endl;
-    // cout << "c " << &c << endl;
+    cout << "a " << &a << endl;
+    cout << "b " << &b << endl;
+    cout << "c " << &c << endl;
 
 //    cin >> aa;
 
 //    Matrix aa = a.copy();
-//    // cout << &aa << endl;
+//    cout << &aa << endl;
 
     int aaaaa = 0;
     cin >> aaaaa;
