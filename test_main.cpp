@@ -448,8 +448,8 @@ public:
 
 
 int main(){
-    Matrix a = Matrix(1000, 1000, 4);
-    Matrix c = Matrix(1000, 1000, 4);
+    Matrix a = Matrix(5, 5, 4);
+    Matrix c = Matrix(5, 5, 3);
     Matrix b;
 //    b = a;
     b = a + c;
