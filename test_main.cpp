@@ -269,7 +269,10 @@ public:
 
     ~Matrix(){
         cout << "free " << this << endl;
-        free(matrix);
+        if (matrix != NULL){
+//            free(matrix);
+            delete []matrix;
+        }
     }
 
     inline double get(size_t a, size_t b, size_t c, size_t d){
@@ -385,12 +388,45 @@ public:
     }
 
     Matrix operator=(Matrix &_matrix){
+//        for ( size_t i = 0; i < 4; i++){
+//            shape[i] = _matrix.shape[i];
+//            index_reflec_1d_[i] = _matrix.index_reflec_1d_[i];
+//            size_1d = _matrix.size_1d;
+//        }
+//        delete []matrix;
+
+//        if (_matrix.is_cal_result){
+//            matrix = _matrix.matrix;
+//            _matrix.matrix = NULL;
+//            delete &_matrix;
+//        }else{
+//            memcpy(matrix, _matrix.matrix, sizeof(double) * size_1d);
+//        }
+
+
         if (_matrix.is_cal_result){
-
+            _matrix.is_cal_result = false;
+            return _matrix;
+//            matrix = _matrix.matrix;
+//            _matrix.matrix = NULL;
+//            delete &_matrix;
         }else{
-
+            Matrix *result = _matrix.copy();
+            return *result;
+//            memcpy(matrix, _matrix.matrix, sizeof(double) * size_1d);
         }
     }
+
+    Matrix operator=(Matrix *_matrix){
+        if (_matrix->is_cal_result){
+            _matrix->is_cal_result = false;
+            return *_matrix;
+        }else{
+            Matrix *result = _matrix->copy();
+            return *result;
+        }
+    }
+
 
 };
 
