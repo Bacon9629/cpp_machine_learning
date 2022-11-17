@@ -236,7 +236,8 @@ public:
         index_reflec_1d_[2] = d;
         index_reflec_1d_[1] = d * c;
         index_reflec_1d_[0] = b * d * c;
-        matrix = (double*) calloc(size_1d, sizeof(double));
+        matrix = new double [size_1d];
+//        matrix = (double*) calloc(size_1d, sizeof(double));
         memcpy(matrix, _matrix_point, sizeof(double) * size_1d);
 
         cout << "_matrix_point construct " << this << endl;
@@ -255,9 +256,12 @@ public:
         index_reflec_1d_[2] = d;
         index_reflec_1d_[1] = d * c;
         index_reflec_1d_[0] = b * d * c;
-        matrix = (double*) calloc(size_1d, sizeof(double));
-        for (size_t i = 0; i < size_1d; i++){
-            matrix[i] = init_val;
+        matrix = new double [size_1d]();
+//        matrix = (double*) calloc(size_1d, sizeof(double));
+        if (init_val != 0){
+            for (size_t i = 0; i < size_1d; i++){
+                matrix[i] = init_val;
+            }
         }
 
         cout << "init_val construct " << this << endl;
