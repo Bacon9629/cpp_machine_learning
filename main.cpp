@@ -80,7 +80,6 @@ public:
             for (int c = 0; c < col_result; c++) {
                 // 指定在result內的哪個位置
                 // 接下來依照指定的result位置取出a、b的值來做計算
-
                 for (int i = 0; i < col_a; i++) {
                     result->get(r, c) += matrix_a.get(r, i) * matrix_b.get(i, c);
                 }
@@ -156,7 +155,9 @@ public:
 //        matrix = (double*) calloc(size_1d, sizeof(double));
         memcpy(matrix, _matrix_point, sizeof(double) * size_1d);
 
-//        cout << "_matrix_point construct " << this << endl;
+#ifdef SHOW_MATRIX_PTR
+        cout << "_matrix_point construct " << this << endl;
+#endif
     }
 
     void init(size_t a, size_t b, size_t c, size_t d, double init_val){
@@ -174,18 +175,20 @@ public:
         index_reflec_1d_[1] = d * c;
         index_reflec_1d_[0] = b * d * c;
         matrix = new double [size_1d]();
-//        matrix = (double*) calloc(size_1d, sizeof(double));
         if (init_val != 0){
             for (size_t i = 0; i < size_1d; i++){
                 matrix[i] = init_val;
             }
         }
-
-//        cout << "init_val construct " << this << endl;
+#ifdef SHOW_MATRIX_PTR
+        cout << "init_val construct " << this << endl;
+#endif
     }
 
     ~Matrix(){
-//        cout << "free " << this << endl;
+#ifdef SHOW_MATRIX_PTR
+        cout << "free " << this << endl;
+#endif
         if (matrix != NULL){
 //            free(matrix);
             delete []matrix;
@@ -243,70 +246,105 @@ public:
 
     inline Matrix* copy(){
         Matrix *result = new Matrix(matrix, shape[0], shape[1], shape[2], shape[3]);
-        cout << "copy " << result << endl;
+//        cout << "copy " << result << endl;
         return result;
+    }
+
+    Matrix& exp_(){
+        Matrix *result = calculate_check_need_copy();
+        double* temp = result->matrix;
+        for (size_t i = 0; i < size_1d; i++){
+            temp[i] = exp(result->matrix[i]);
+        }
+        return *result;
+    }
+
+    Matrix& log_(){
+        Matrix *result = calculate_check_need_copy();
+        double* temp = result->matrix;
+        for (size_t i = 0; i < size_1d; i++){
+            temp[i] = log(result->matrix[i]);
+        }
+        return *result;
+    }
+
+    Matrix& log10_(){
+        Matrix *result = calculate_check_need_copy();
+        double* temp = result->matrix;
+        for (size_t i = 0; i < size_1d; i++){
+            temp[i] = log10(result->matrix[i]);
+        }
+        return *result;
     }
 
     Matrix& operator+ (double a){
         Matrix *result = calculate_check_need_copy();
+        double* temp = result->matrix;
         for (size_t i = 0; i < size_1d; i++){
-            result->matrix[i] += a;
+            temp[i] += a;
         }
         return *result;
     }
 
     Matrix& operator+ (Matrix &_matrix){
         Matrix *result = calculate_check_need_copy();
+        double* temp = result->matrix;
         for (size_t i = 0; i < size_1d; i++){
-            result->matrix[i] += _matrix.matrix[i];
+            temp[i] += _matrix.matrix[i];
         }
         return *result;
     }
 
     Matrix& operator- (double a){
         Matrix *result = calculate_check_need_copy();
+        double* temp = result->matrix;
         for (size_t i = 0; i < size_1d; i++){
-            result->matrix[i] -= a;
+            temp[i] -= a;
         }
         return *result;
     }
 
     Matrix& operator- (Matrix &_matrix){
         Matrix *result = calculate_check_need_copy();
+        double* temp = result->matrix;
         for (size_t i = 0; i < size_1d; i++){
-            result->matrix[i] -= _matrix.matrix[i];
+            temp[i] -= _matrix.matrix[i];
         }
         return *result;
     }
 
     Matrix& operator* (double a){
         Matrix *result = calculate_check_need_copy();
+        double* temp = result->matrix;
         for (size_t i = 0; i < size_1d; i++){
-            result->matrix[i] *= a;
+            temp[i] *= a;
         }
         return *result;
     }
 
     Matrix& operator* (Matrix &_matrix){
         Matrix *result = calculate_check_need_copy();
+        double* temp = result->matrix;
         for (size_t i = 0; i < size_1d; i++){
-            result->matrix[i] *= _matrix.matrix[i];
+            temp[i] *= _matrix.matrix[i];
         }
         return *result;
     }
 
     Matrix& operator/ (double a){
         Matrix *result = calculate_check_need_copy();
+        double* temp = result->matrix;
         for (size_t i = 0; i < size_1d; i++){
-            result->matrix[i] /= a;
+            temp[i] /= a;
         }
         return *result;
     }
 
     Matrix& operator/ (Matrix &_matrix){
         Matrix *result = calculate_check_need_copy();
+        double* temp = result->matrix;
         for (size_t i = 0; i < size_1d; i++){
-            result->matrix[i] /= _matrix.matrix[i];
+            temp[i] /= _matrix.matrix[i];
         }
         return *result;
     }
@@ -332,7 +370,6 @@ public:
     }
 };
 
-
 // loss function - start
 
 class LossFunc{
@@ -346,18 +383,19 @@ public:
     double forward(Matrix &y, Matrix &target) override{
         double result = 0;
         Matrix temp = y - target;
-        temp = Matrix::times(&temp, &temp);
+        temp = temp * temp;
 
-        for(size_t r=0;r<y.row();++r)
-            for(size_t c=0;c<y.col();++c)
-                result += temp.matrix[r][c];
+        for(size_t r=0; r < y.shape[2];++r)
+            for(size_t c = 0; c < y.shape[3];++c)
+                result += temp.get(r, c);
 
-        result /= y.row() * y.col();
+        result /= double (y.shape[2] * y.shape[3]);
         return result;
     }
 
     Matrix backward(Matrix &y, Matrix &target) override {
-        return Matrix::reduce(&y, &target);
+        Matrix result = y - target;
+        return result;
     }
 };
 

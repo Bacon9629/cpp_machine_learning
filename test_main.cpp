@@ -5,6 +5,8 @@
 #include <cassert>
 //#include <vector>
 
+#define SHOW_MATRIX_PTR
+
 using namespace std;
 
 class Matrix{
@@ -80,7 +82,6 @@ public:
             for (int c = 0; c < col_result; c++) {
                 // 指定在result內的哪個位置
                 // 接下來依照指定的result位置取出a、b的值來做計算
-
                 for (int i = 0; i < col_a; i++) {
                     result->get(r, c) += matrix_a.get(r, i) * matrix_b.get(i, c);
                 }
@@ -156,7 +157,9 @@ public:
 //        matrix = (double*) calloc(size_1d, sizeof(double));
         memcpy(matrix, _matrix_point, sizeof(double) * size_1d);
 
+#ifdef SHOW_MATRIX_PTR
         cout << "_matrix_point construct " << this << endl;
+#endif
     }
 
     void init(size_t a, size_t b, size_t c, size_t d, double init_val){
@@ -179,12 +182,15 @@ public:
                 matrix[i] = init_val;
             }
         }
-
+#ifdef SHOW_MATRIX_PTR
         cout << "init_val construct " << this << endl;
+#endif
     }
 
     ~Matrix(){
+#ifdef SHOW_MATRIX_PTR
         cout << "free " << this << endl;
+#endif
         if (matrix != NULL){
 //            free(matrix);
             delete []matrix;
@@ -246,66 +252,101 @@ public:
         return result;
     }
 
+    Matrix& exp_(){
+        Matrix *result = calculate_check_need_copy();
+        double* temp = result->matrix;
+        for (size_t i = 0; i < size_1d; i++){
+            temp[i] = exp(result->matrix[i]);
+        }
+        return *result;
+    }
+
+    Matrix& log_(){
+        Matrix *result = calculate_check_need_copy();
+        double* temp = result->matrix;
+        for (size_t i = 0; i < size_1d; i++){
+            temp[i] = log(result->matrix[i]);
+        }
+        return *result;
+    }
+
+    Matrix& log10_(){
+        Matrix *result = calculate_check_need_copy();
+        double* temp = result->matrix;
+        for (size_t i = 0; i < size_1d; i++){
+            temp[i] = log10(result->matrix[i]);
+        }
+        return *result;
+    }
+
     Matrix& operator+ (double a){
         Matrix *result = calculate_check_need_copy();
+        double* temp = result->matrix;
         for (size_t i = 0; i < size_1d; i++){
-            result->matrix[i] += a;
+            temp[i] += a;
         }
         return *result;
     }
 
     Matrix& operator+ (Matrix &_matrix){
         Matrix *result = calculate_check_need_copy();
+        double* temp = result->matrix;
         for (size_t i = 0; i < size_1d; i++){
-            result->matrix[i] += _matrix.matrix[i];
+            temp[i] += _matrix.matrix[i];
         }
         return *result;
     }
 
     Matrix& operator- (double a){
         Matrix *result = calculate_check_need_copy();
+        double* temp = result->matrix;
         for (size_t i = 0; i < size_1d; i++){
-            result->matrix[i] -= a;
+            temp[i] -= a;
         }
         return *result;
     }
 
     Matrix& operator- (Matrix &_matrix){
         Matrix *result = calculate_check_need_copy();
+        double* temp = result->matrix;
         for (size_t i = 0; i < size_1d; i++){
-            result->matrix[i] -= _matrix.matrix[i];
+            temp[i] -= _matrix.matrix[i];
         }
         return *result;
     }
 
     Matrix& operator* (double a){
         Matrix *result = calculate_check_need_copy();
+        double* temp = result->matrix;
         for (size_t i = 0; i < size_1d; i++){
-            result->matrix[i] *= a;
+            temp[i] *= a;
         }
         return *result;
     }
 
     Matrix& operator* (Matrix &_matrix){
         Matrix *result = calculate_check_need_copy();
+        double* temp = result->matrix;
         for (size_t i = 0; i < size_1d; i++){
-            result->matrix[i] *= _matrix.matrix[i];
+            temp[i] *= _matrix.matrix[i];
         }
         return *result;
     }
 
     Matrix& operator/ (double a){
         Matrix *result = calculate_check_need_copy();
+        double* temp = result->matrix;
         for (size_t i = 0; i < size_1d; i++){
-            result->matrix[i] /= a;
+            temp[i] /= a;
         }
         return *result;
     }
 
     Matrix& operator/ (Matrix &_matrix){
         Matrix *result = calculate_check_need_copy();
+        double* temp = result->matrix;
         for (size_t i = 0; i < size_1d; i++){
-            result->matrix[i] /= _matrix.matrix[i];
+            temp[i] /= _matrix.matrix[i];
         }
         return *result;
     }
@@ -334,29 +375,8 @@ public:
 
 int main(){
     Matrix a = Matrix(5, 5, 4);
-    a.set_matrix_1_to_x();
-
-    a.get(3, 3) = 333;
-
-    Matrix b;
-    b = Matrix::transpose(a);
-
-    Matrix c;
-    c = a - b;
-
-    cout << "a: " << &a << endl;
-
-    a.print_shape();
-    a.print_matrix();
-    cout << "b: " << &b << endl;
-    b.print_shape();
-    b.print_matrix();
-    cout << "c: " << &c << endl;
-    c.print_shape();
-    c.print_matrix();
-
-    int aaaaa = 0;
-    cin >> aaaaa;
+//    Matrix b;
+    a = a * a;
 
 
     return 0;
