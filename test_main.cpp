@@ -101,106 +101,33 @@ public:
         }
         return *result;
     }
-//
-//    inline static Matrix transpose(Matrix &_matrix) {
+
+    inline static Matrix transpose(Matrix &_matrix) {
 //        if (_matrix.shape[0] != 0){
 //            assert("matrix error - transpose");
 //        }
-//        Matrix result(_matrix.shape[3], _matrix.shape[2], 0);
+        Matrix result = Matrix(_matrix.shape[3], _matrix.shape[2], 0);
+
+        for (size_t i = 0; i < _matrix.shape[2]; i++){
+            for (size_t j = 0; j < _matrix.shape[3]; j++){
+                *(result.get_point(j, i)) = _matrix.get(i, j);
+            }
+        }
+
+        return result;
+    }
 //
-//        for (size_t i = 0; i < _matrix.shape[2]; i++){
-//            for (size_t j = 0; j < _matrix.shape[3]; j++){
-//                *(result.get_point(j, i)) = _matrix.get(i, j);
-//            }
+//    inline static Matrix expand_row(Matrix *matrix_a, Matrix *matrix_b){
+//        Matrix _temp_b;
+////        if(matrix_a->row() != matrix_b->row()){
+//        _temp_b = Matrix(matrix_a->row(), matrix_b->col(), 0);
+//        for (int i=0;i<matrix_a->row();i++){
+//            _temp_b.matrix[i] = matrix_b->matrix[0];
 //        }
-//
-//        Matrix temp(result);
-//        return temp;
-//    }
-//
-////    inline static Matrix expand_row(Matrix *matrix_a, Matrix *matrix_b){
-////        Matrix _temp_b;
-//////        if(matrix_a->row() != matrix_b->row()){
-////        _temp_b = Matrix(matrix_a->row(), matrix_b->col(), 0);
-////        for (int i=0;i<matrix_a->row();i++){
-////            _temp_b.matrix[i] = matrix_b->matrix[0];
 ////        }
-//////        }
-////        return _temp_b;
-////    }
-////
-//    static Matrix add(Matrix &matrix_a, Matrix &matrix_b){
-//        Matrix _temp_b = ;
-//        if(matrix_a->row() != matrix_b->row()){
-//            _temp_b = expand_row(matrix_a, matrix_b);
-//            matrix_b = &_temp_b;
-//        }
-//
-//        if (matrix_a->row() != matrix_b->row() || matrix_a->col() != matrix_b->col()){
-//            std::cout << "shape wrong" << std::endl;
-//        }
-//
-//        Matrix result(matrix_a->row(), matrix_b->col(), 0);
-//        for (int i=0;i<result.row();i++){
-//            for (int j=0;j<result.col();j++){
-//                result.matrix[i][j] = matrix_a->matrix[i][j] + matrix_b->matrix[i][j];
-//            }
-//        }
-//        return result;
+//        return _temp_b;
 //    }
-//
-//    inline static Matrix add(Matrix *matrix, double val){
-//        Matrix val_matrix(matrix->row(), matrix->col(), val);
-//        Matrix result_matrix(Matrix::add(matrix, &val_matrix));
-//        return result_matrix;
-//    }
-//
-//    static Matrix reduce(Matrix *matrix_a, Matrix *matrix_b){
-//        Matrix _temp_b;
-//        if(matrix_a->row() != matrix_b->row()){
-//            _temp_b = expand_row(matrix_a, matrix_b);
-//            matrix_b = &_temp_b;
-//        }
-//
-//        if (matrix_a->row() != matrix_b->row() || matrix_a->col() != matrix_b->col()){
-//            std::cout << "shape wrong" << std::endl;
-//        }
-//        Matrix result(matrix_a->row(), matrix_b->col(), 0);
-//        for (int i=0;i<result.row();i++){
-//            for (int j=0;j<result.col();j++){
-//                result.matrix[i][j] = matrix_a->matrix[i][j] - matrix_b->matrix[i][j];
-//            }
-//        }
-//        return result;
-//    }
-//
-//    inline static Matrix reduce(Matrix *matrix, double val){
-//        Matrix val_matrix(matrix->row(), matrix->col(), val);
-//        Matrix result_matrix(Matrix::reduce(matrix, &val_matrix));
-//        return result_matrix;
-//    }
-//
-//    inline static Matrix times(Matrix *matrix_a, Matrix *matrix_b){
-//        Matrix _temp_b;
-//        if(matrix_a->row() != matrix_b->row()){
-//            _temp_b = expand_row(matrix_a, matrix_b);
-//            matrix_b = &_temp_b;
-//        }
-//
-//        Matrix result(matrix_a->row(), matrix_a->col(), 0);
-//        for (int i=0;i<result.row();i++){
-//            for (int j=0;j<result.col();j++){
-//                result.matrix[i][j] = matrix_a->matrix[i][j] * matrix_b->matrix[i][j];
-//            }
-//        }
-//        return result;
-//    }
-//
-//    inline static Matrix times(Matrix *matrix, double val){
-//        Matrix val_matrix(matrix->row(), matrix->col(), val);
-//        Matrix result_matrix(Matrix::times(matrix, &val_matrix));
-//        return result_matrix;
-//    }
+
 
     Matrix() {
         init((size_t)0, (size_t)0, 0, 0, 0);
@@ -294,55 +221,28 @@ public:
         return Matrix::get_point(*this, row, col);
     }
 
-//    inline size_t row() {
-//        return Matrix::row(this);
-//    }
-//
-//    inline size_t col() {
-//        return Matrix::col(this);
-//    }
-//
-//    inline Matrix dot(Matrix *matrix_b) {
-//        return Matrix::dot(this, matrix_b);
-//    }
-//
+    inline Matrix dot(Matrix &matrix_b) {
+        return Matrix::dot(*this, matrix_b);
+    }
+
 //    inline Matrix transpose() {
 //        return Matrix::transpose(this);
 //    }
 //
-//    inline Matrix add(Matrix *_matrix) {
-//        return Matrix::add(this, _matrix);
-//    }
-//
-//    inline Matrix add(double val) {
-//        return Matrix::add(this, val);
-//    }
-//
-//    inline Matrix reduce(Matrix *_matrix) {
-//        return Matrix::reduce(this, _matrix);
-//    }
-//
-//    inline Matrix reduce(double val) {
-//        return Matrix::reduce(this, val);
-//    }
-//
-//    inline Matrix multiplication(Matrix *_matrix) {
-//        return Matrix::times(this, _matrix);
-//    }
-//
-//    inline Matrix multiplication(double val) {
-//        return Matrix::times(this, val);
-//    }
-//
-//    inline void random_matrix(){
-//        srand(time(NULL));
-//        for (int i=0;i<this->row();i++){
-//            for (int j=0;j<this->col();j++){
-//                matrix[i][j] = rand() / (RAND_MAX + 1.0) - 0.5;
-//            }
-//        }
-//    }
-//
+    inline void random_matrix(){
+        srand(time(NULL));
+        double temp = (RAND_MAX + 1.0);
+        for (int i=0; i < size_1d; i++){
+                matrix[i] = rand() / temp - 0.5;
+        }
+    }
+
+    void set_matrix_1_to_x(){
+        for (size_t i = 0; i < size_1d; i++){
+            matrix[i] = double (i);
+        }
+    }
+
     inline void print_matrix(){
         for (int i=0;i<shape[2];i++){
             for (int j=0;j<shape[3];j++){
@@ -351,10 +251,10 @@ public:
             cout << endl;
         }
     }
-//
-//    inline void print_shape(){
-//        cout << "rol: " << row() << " col: " << col() << endl;
-//    }
+
+    inline void print_shape(){
+        cout << "shape: " << shape[0] << " " << shape[1] << " " << shape[2] << " " << shape[3] << " " << endl;
+    }
 
     inline Matrix* copy(){
         Matrix *result = new Matrix(matrix, shape[0], shape[1], shape[2], shape[3]);
@@ -365,27 +265,66 @@ public:
 
     Matrix& operator+ (double a){
         Matrix *result = calculate_check_need_copy();
-        cout << "add " << result << endl;
+//        cout << "add " << result << endl;
         for (size_t i = 0; i < size_1d; i++){
             result->matrix[i] += a;
         }
         return *result;
     }
 
-    Matrix& operator+ (Matrix *_matrix){
+    Matrix& operator+ (Matrix &_matrix){
         Matrix *result = calculate_check_need_copy();
-        cout << "add " << this << " + " << result << endl;
+//        cout << "add " << this << " + " << result << endl;
         for (size_t i = 0; i < size_1d; i++){
-            result->matrix[i] += _matrix->matrix[i];
+            result->matrix[i] += _matrix.matrix[i];
         }
         return *result;
     }
 
-    Matrix& operator+ (Matrix &_matrix){
+    Matrix& operator- (double a){
         Matrix *result = calculate_check_need_copy();
-        cout << "add " << this << " + " << result << endl;
         for (size_t i = 0; i < size_1d; i++){
-            result->matrix[i] += _matrix.matrix[i];
+            result->matrix[i] -= a;
+        }
+        return *result;
+    }
+
+    Matrix& operator- (Matrix &_matrix){
+        Matrix *result = calculate_check_need_copy();
+        for (size_t i = 0; i < size_1d; i++){
+            result->matrix[i] -= _matrix.matrix[i];
+        }
+        return *result;
+    }
+
+    Matrix& operator* (double a){
+        Matrix *result = calculate_check_need_copy();
+        for (size_t i = 0; i < size_1d; i++){
+            result->matrix[i] *= a;
+        }
+        return *result;
+    }
+
+    Matrix& operator* (Matrix &_matrix){
+        Matrix *result = calculate_check_need_copy();
+        for (size_t i = 0; i < size_1d; i++){
+            result->matrix[i] *= _matrix.matrix[i];
+        }
+        return *result;
+    }
+
+    Matrix& operator/ (double a){
+        Matrix *result = calculate_check_need_copy();
+        for (size_t i = 0; i < size_1d; i++){
+            result->matrix[i] /= a;
+        }
+        return *result;
+    }
+
+    Matrix& operator/ (Matrix &_matrix){
+        Matrix *result = calculate_check_need_copy();
+        for (size_t i = 0; i < size_1d; i++){
+            result->matrix[i] /= _matrix.matrix[i];
         }
         return *result;
     }
@@ -411,26 +350,6 @@ public:
 
     }
 
-    void operator= (Matrix *_matrix){
-        for ( size_t i = 0; i < 4; i++){
-            shape[i] = _matrix->shape[i];
-            index_reflec_1d_[i] = _matrix->index_reflec_1d_[i];
-            size_1d = _matrix->size_1d;
-        }
-        if (matrix != NULL){
-            delete []matrix;
-        }
-
-        if (_matrix->is_cal_result){
-            matrix = _matrix->matrix;
-            _matrix->matrix = NULL;
-            delete _matrix;
-        }else{
-            matrix = new double [size_1d];
-            memcpy(matrix, _matrix->matrix, sizeof(double) * size_1d);
-        }
-    }
-
 };
 
 
@@ -438,8 +357,8 @@ int main(){
     Matrix a = Matrix(5, 5, 4);
     Matrix c = Matrix(5, 5, 3);
     Matrix b;
-//    b = a;
-//    b = a + c;
+
+    a.set_matrix_1_to_x();
 
     b = Matrix::dot(a, c);
 
@@ -453,6 +372,10 @@ int main(){
     cout << "a " << &a << endl;
     cout << "b " << &b << endl;
     cout << "c " << &c << endl;
+
+    Matrix d;
+    d = Matrix::transpose(a);
+    d.print_matrix();
 
 //    cin >> aa;
 
