@@ -156,7 +156,7 @@ public:
 //        matrix = (double*) calloc(size_1d, sizeof(double));
         memcpy(matrix, _matrix_point, sizeof(double) * size_1d);
 
-//        cout << "_matrix_point construct " << this << endl;
+        cout << "_matrix_point construct " << this << endl;
     }
 
     void init(size_t a, size_t b, size_t c, size_t d, double init_val){
@@ -174,18 +174,17 @@ public:
         index_reflec_1d_[1] = d * c;
         index_reflec_1d_[0] = b * d * c;
         matrix = new double [size_1d]();
-//        matrix = (double*) calloc(size_1d, sizeof(double));
         if (init_val != 0){
             for (size_t i = 0; i < size_1d; i++){
                 matrix[i] = init_val;
             }
         }
 
-//        cout << "init_val construct " << this << endl;
+        cout << "init_val construct " << this << endl;
     }
 
     ~Matrix(){
-//        cout << "free " << this << endl;
+        cout << "free " << this << endl;
         if (matrix != NULL){
 //            free(matrix);
             delete []matrix;
@@ -243,7 +242,7 @@ public:
 
     inline Matrix* copy(){
         Matrix *result = new Matrix(matrix, shape[0], shape[1], shape[2], shape[3]);
-        cout << "copy " << result << endl;
+//        cout << "copy " << result << endl;
         return result;
     }
 
@@ -342,13 +341,19 @@ int main(){
     Matrix b;
     b = Matrix::transpose(a);
 
-    cout << "a: " << a.size_1d << endl;
+    Matrix c;
+    c = a - b;
+
+    cout << "a: " << &a << endl;
 
     a.print_shape();
     a.print_matrix();
-    cout << "b: " << endl;
+    cout << "b: " << &b << endl;
     b.print_shape();
     b.print_matrix();
+    cout << "c: " << &c << endl;
+    c.print_shape();
+    c.print_matrix();
 
     int aaaaa = 0;
     cin >> aaaaa;
