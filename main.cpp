@@ -101,17 +101,13 @@ public:
         return *result;
     }
 
-//    inline static Matrix expand_row(Matrix *matrix_a, Matrix *matrix_b){
-//        Matrix _temp_b;
-////        if(matrix_a->row() != matrix_b->row()){
-//        _temp_b = Matrix(matrix_a->row(), matrix_b->col(), 0);
-//        for (int i=0;i<matrix_a->row();i++){
-//            _temp_b.matrix[i] = matrix_b->matrix[0];
-//        }
-////        }
-//        return _temp_b;
-//    }
-
+    Matrix(Matrix &a, bool is_calculate = false) {
+        size_t *_shape = a.shape;
+        init(a.matrix, _shape[0], _shape[1], _shape[2], _shape[3], is_calculate);
+        if (a.is_cal_result){
+            delete &a;
+        }
+    }
 
     Matrix(bool is_calculate = false) {
         init((size_t)0, (size_t)0, 0, 0, 0, is_calculate);
@@ -206,6 +202,18 @@ public:
         for (size_t i = 0; i < size_1d; i++){
             matrix[i] = double (i);
         }
+    }
+
+    Matrix& expand_row(size_t *target_shape){
+        return expand_row(target_shape[2], target_shape[3]);
+    }
+
+    Matrix& expand_row(size_t row, size_t col){
+        Matrix *result = new Matrix(row, col, 0, true);
+        for (size_t i=0;i<row;i++)
+            for (size_t j=0; j < col; j++)
+                result->get(i, j) = get(0, i);
+        return *result;
     }
 
     inline void print_matrix(){
@@ -362,15 +370,14 @@ public:
 class LossFunc{
 public:
     virtual double forward(Matrix &y, Matrix &target) = 0;
-    virtual Matrix backward(Matrix &y, Matrix &target) = 0;
+    virtual Matrix& backward(Matrix &y, Matrix &target) = 0;
 };
 
 class MSE: public LossFunc{
 public:
     double forward(Matrix &y, Matrix &target) override{
         double result = 0;
-        Matrix temp;
-        temp = y - target;
+        Matrix temp = y - target;
         temp = temp * temp;
 
         for(size_t r=0; r < y.shape[2];++r)
@@ -381,9 +388,10 @@ public:
         return result;
     }
 
-    Matrix backward(Matrix &y, Matrix &target) override {
-        Matrix result = y - target;
-        return result;
+    Matrix& backward(Matrix &y, Matrix &target) override {
+        Matrix *result = new Matrix();
+        *result = y - target;
+        return *result;
     }
 };
 
@@ -401,18 +409,18 @@ public:
         return result;
     }
 
-    Matrix backward(Matrix &y, Matrix &target) override {
-        Matrix result(y.shape[2], y.shape[3], 0);
+    Matrix& backward(Matrix &y, Matrix &target) override {
+        Matrix *result = new Matrix(y.shape[2], y.shape[3], 0);
 
         for (size_t i = 0; i< y.shape[2]; i++){
             for (size_t j = 0; j < y.shape[3]; j++){
                 double _y = y.get(i, j);
                 double _target = target.get(i, j);
-                result.get(i, j) = (_y - _target) / (_y * (1 - _y));
+                result->get(i, j) = (_y - _target) / (_y * (1 - _y));
             }
         }
 
-        return result;
+        return *result;
     }
 };
 
@@ -433,13 +441,13 @@ public:
         return result;
     }
 
-    Matrix backward(Matrix &y, Matrix &target) override {
-        Matrix result = Matrix(y.shape[2], y.shape[3], 0);
+    Matrix& backward(Matrix &y, Matrix &target) override {
+        Matrix *result = new Matrix(y.shape[2], y.shape[3], 0);
         for (size_t i = 0; i < y.shape[2]; i++)
             for (size_t j = 0; j < y.shape[3]; j++)
-                result.get(i, j) = target.get(i, j) != 0 ? y.get(i, j) - 1 : y.get(i, j);
+                result->get(i, j) = target.get(i, j) != 0 ? y.get(i, j) - 1 : y.get(i, j);
 
-        return result;
+        return *result;
     }
 };
 
@@ -450,114 +458,100 @@ public:
 
 class ActiveFunc{
 public:
-    virtual Matrix func_forward(Matrix x) = 0;
-    virtual Matrix func_backward(Matrix x) = 0;
+    virtual Matrix& func_forward(Matrix &x) = 0;
+    virtual Matrix& func_backward(Matrix &x) = 0;
 
 };
 
 class Relu: public ActiveFunc{
 public:
-    Matrix func_forward(Matrix x) override {
-        Matrix result = Matrix(x.shape[2], x.shape[3], 0);
+    Matrix& func_forward(Matrix &x) override {
+        Matrix *result = new Matrix(x.shape[2], x.shape[3], 0);
         for (size_t i = 0; i < x.shape[2]; i++){
             for (size_t j = 0; j < x.shape[3]; j++){
-                    result.get(i, j) = x.get(i, j) > 0 ? x.get(i, j) : 0;
+                    result->get(i, j) = x.get(i, j) > 0 ? x.get(i, j) : 0;
             }
         }
-        return result;
+        return *result;
     }
 
-    Matrix func_backward(Matrix x) override {
-        Matrix result = Matrix(x.row(), x.col(), 0);
-        for (size_t i = 0; i<x.row(); i++){
-            for (size_t j = 0; j<x.col(); j++){
-                result.matrix[i][j] = x.matrix[i][j] > 0 ? 1 : 0;
+    Matrix& func_backward(Matrix &x) override {
+        Matrix *result = new Matrix(x.shape[2], x.shape[3], 0);
+        for (size_t i = 0; i < x.shape[2]; i++){
+            for (size_t j = 0; j < x.shape[3]; j++){
+                result->get(i, j) = x.get(i, j) > 0 ? 1 : 0;
             }
         }
-        return result;
+        return *result;
     }
 };
 
 class Sigmoid: public ActiveFunc{
 public:
-    Matrix func_forward(Matrix x) override {
-        Matrix result(x.row(), x.col(), 0);
-
-        for (int i = 0; i< x.row(); i++){
-            for (int j = 0; j< x.col(); j++) {
-                result.matrix[i][j] = 1 / (1 + exp(-x.matrix[i][j]));
+    Matrix& func_forward(Matrix &x) override {
+        Matrix *result = new Matrix(x.shape[2], x.shape[3], 0);
+        for (size_t i = 0; i < x.shape[2]; i++){
+            for (size_t j = 0; j < x.shape[3]; j++){
+                result->get(i, j) = 1 / (1 + exp(-x.get(i, j)));
 
             }
         }
-        return result;
+        return *result;
     }
 
-    Matrix func_backward(Matrix x) override {
+    Matrix& func_backward(Matrix &x) override {
         Matrix a = func_forward(x);
-        Matrix b = Matrix::reduce(&a, 1);
-        b = Matrix::times(&b, -1);
-        return Matrix::times(&a, &b);
+        Matrix *result = new Matrix();
+        *result = (a - 1) * -1 * a;
+        return *result;
     }
 };
 
 class SoftMax_CrossEntropy: public ActiveFunc{
 public:
-    Matrix func_forward(Matrix x) override {
-        Matrix result = Matrix(x.row(), x.col(), 0);
-        Matrix total = Matrix(x.row(), 1, 0);
-        Matrix max = Matrix(x.row(), 1, 0);
-        for (size_t i=0;i<x.row();i++)
-            for (size_t j=0;j<x.col();j++)
-                max.matrix[i][0] = x.matrix[i][j] > max.matrix[i][0] ? x.matrix[i][j] : max.matrix[i][0];
+    Matrix& func_forward(Matrix &x) override {
+        Matrix *result = new Matrix(x.shape[2], x.shape[3], 0);
+        Matrix total(x.shape[2], 1, 0);
+        Matrix max(x.shape[2], 1, 0);
+        for (size_t i=0;i<x.shape[2];i++)
+            for (size_t j=0;j<x.shape[3];j++)
+                max.get(i, 0) = x.get(i, j) > max.get(i, 0) ? x.get(i, j) : max.get(i, 0);
 
-        for (size_t i=0;i<x.row();i++)
-            for (size_t j=0;j<x.col();j++)
-                total.matrix[i][0] += exp(x.matrix[i][j] - max.matrix[i][0]);
+        for (size_t i=0;i<x.shape[2];i++)
+            for (size_t j=0;j<x.shape[3];j++)
+                total.get(i, 0) += exp(x.get(i, j) - max.get(i, 0));
 
-        for (size_t i=0;i<x.row();i++)
-            for (size_t j=0;j<x.col();j++)
-                result.matrix[i][j] = exp(x.matrix[i][j] - max.matrix[i][0]) / total.matrix[i][0];
+        for (size_t i=0;i<x.shape[2];i++)
+            for (size_t j=0;j<x.shape[3];j++)
+                result->get(i, j) = exp(x.get(i, j) - max.get(i, 0)) / total.get(i, 0);
 
 
 
-        return result;
+        return *result;
     }
 
-    Matrix func_backward(Matrix x) override {
-        return Matrix(x.row(), x.col(), 1);
+    Matrix& func_backward(Matrix &x) override {
+        return *(new Matrix(x.shape[2], x.shape[3], 1));
     }
 };
 
 class Tanh:public ActiveFunc{
 public:
-    Matrix func_forward(Matrix x) override {
-        Matrix result(x.row(), x.col(), 0);
-
-        for (int i = 0; i< x.row(); i++){
-            for (int j = 0; j< x.col(); j++) {
-                double a = exp(x.matrix[i][j]);
-                double b = exp(-x.matrix[i][j]);
-//                double c = (a - b) / (b - a);
-                result.matrix[i][j] = (a - b) / (b - a);
-            }
-        }
-        return result;
+    Matrix& func_forward(Matrix &x) override {
+        Matrix *result = new Matrix(x.shape[2], x.shape[3], 0);
+        Matrix a = x.exp_();
+        Matrix b = x.exp_() * -1;
+        *result = (a - b) / (b - a);
+        return *result;
     }
 
-    Matrix func_backward(Matrix x) override {
-        Matrix result(x.row(), x.col(), 0);
-
-        for (int i = 0; i< x.row(); i++){
-            for (int j = 0; j< x.col(); j++) {
-                double a = exp(x.matrix[i][j]);
-                double b = exp(-x.matrix[i][j]);
-                double c = (a - b) / (b - a);
-                result.matrix[i][j] = 1 - c * c;
-            }
-        }
-
-
-        return result;
+    Matrix& func_backward(Matrix &x) override {
+        Matrix *result = new Matrix(x.shape[2], x.shape[3], 0);
+        Matrix a = x.exp_();
+        Matrix b = x.exp_() * -1;
+        Matrix c = (a - b) / (b - a);
+        *result = (c * c - 1) * -1;
+        return *result;
     }
 
 };
@@ -581,13 +575,9 @@ public:
     }
 
     void gradient_decent(Matrix &w, Matrix &b, Matrix &grad_w, Matrix &grad_b) override {
-        double _temp = eta / w.row();
-
-        Matrix temp_w = Matrix::times(&grad_w, _temp);
-        w = Matrix::reduce(&w, &temp_w);
-
-        Matrix temp_b = Matrix::times(&grad_b, _temp);
-        b = Matrix::reduce(&b, &temp_b);
+        double _eta = eta / w.shape[2];
+        w = w - (grad_w * _eta);
+        b = b - (grad_b * _eta);
     }
 
 };
@@ -596,8 +586,8 @@ class MMT: public Optimizer{
 public:
     double eta;
     double beta = 0.9;
-    Matrix last_grad_w = Matrix();
-    Matrix last_grad_b = Matrix();
+    Matrix last_grad_w;
+    Matrix last_grad_b;
 
     MMT(double _eta){
         init(_eta, 0.9);
@@ -615,21 +605,15 @@ public:
     void gradient_decent(Matrix &w, Matrix &b, Matrix &grad_w, Matrix &grad_b) override {
 //        last_grad_w =  alpha * grad_w + beta * last_grad_w;
 //        w -= last_grad_w;
-        if (last_grad_w.row() == 0){
-            last_grad_w = Matrix(grad_w.row(), grad_w.col(), 0);
-            last_grad_b = Matrix(grad_b.row(), grad_b.col(), 0);
+        if (last_grad_w.shape[2] == 0){
+            last_grad_w = *(new Matrix(grad_w.shape[2], grad_w.shape[3], 0));
+            last_grad_b = *(new Matrix(grad_b.shape[2], grad_b.shape[3], 0));
         }
 
-        Matrix temp_a = Matrix::times(&grad_w, eta);
-        Matrix temp_b = Matrix::times(&last_grad_w, beta);
-        last_grad_w = Matrix::add(&temp_a, &temp_b);
-        w = Matrix::reduce(&w, &last_grad_w);
-
-        temp_a = Matrix::times(&grad_b, eta);
-        temp_b = Matrix::times(&last_grad_b, beta);
-        last_grad_b = Matrix::add(&temp_a, &temp_b);
-        b = Matrix::reduce(&b, &last_grad_b);
-
+        last_grad_w = (grad_w * eta) + (last_grad_w * beta);
+        w = w - last_grad_w;
+        last_grad_b = (grad_b * eta) + (last_grad_b * beta);
+        b = b - last_grad_b;
     }
 
 };
@@ -651,8 +635,8 @@ public:
     ActiveFunc *active_func;
     Optimizer *optimizer;
 
-    virtual Matrix forward(Matrix _x, bool is_train) = 0;
-    virtual Matrix backward(Matrix _delta, bool is_train) = 0;
+    virtual Matrix& forward(Matrix &_x, bool is_train) = 0;
+    virtual Matrix& backward(Matrix &_delta, bool is_train) = 0;
     virtual void update() = 0;
 };
 
@@ -667,7 +651,7 @@ public:
         dropout_probability = _dropout_probability;
     }
 
-    Matrix construct_random_bool_list(size_t row, size_t col, double probability){
+    Matrix& construct_random_bool_list(size_t row, size_t col, double probability){
         Matrix result = Matrix(row, col, 0);
         double a = 0;
         double b = 0;

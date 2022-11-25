@@ -103,17 +103,13 @@ public:
         return *result;
     }
 
-//    inline static Matrix expand_row(Matrix *matrix_a, Matrix *matrix_b){
-//        Matrix _temp_b;
-////        if(matrix_a->row() != matrix_b->row()){
-//        _temp_b = Matrix(matrix_a->row(), matrix_b->col(), 0);
-//        for (int i=0;i<matrix_a->row();i++){
-//            _temp_b.matrix[i] = matrix_b->matrix[0];
-//        }
-////        }
-//        return _temp_b;
-//    }
-
+    Matrix(Matrix &a, bool is_calculate = false) {
+        size_t *_shape = a.shape;
+        init(a.matrix, _shape[0], _shape[1], _shape[2], _shape[3], is_calculate);
+        if (a.is_cal_result){
+            delete &a;
+        }
+    }
 
     Matrix(bool is_calculate = false) {
         init((size_t)0, (size_t)0, 0, 0, 0, is_calculate);
@@ -208,6 +204,18 @@ public:
         for (size_t i = 0; i < size_1d; i++){
             matrix[i] = double (i);
         }
+    }
+
+    Matrix& expand_row(size_t *target_shape){
+        return expand_row(target_shape[2], target_shape[3]);
+    }
+
+    Matrix& expand_row(size_t row, size_t col){
+        Matrix *result = new Matrix(row, col, 0, true);
+        for (size_t i=0;i<row;i++)
+            for (size_t j=0; j < col; j++)
+                result->get(i, j) = get(0, i);
+        return *result;
     }
 
     inline void print_matrix(){
@@ -359,13 +367,17 @@ public:
     }
 };
 
+Matrix& f_a(){
+    Matrix *result = new Matrix(true);
+    return *result;
+}
+
+void f_b(){
+    Matrix a = f_a();
+}
+
 
 int main(){
-    Matrix a(3, 3, 5), b(3, 3, 6);
-    Matrix temp;
-    temp = a - b;
-    temp = temp * temp;
-    temp.print_matrix();
-
+    f_b();
     return 0;
 }
