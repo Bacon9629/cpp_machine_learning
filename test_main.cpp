@@ -115,36 +115,29 @@ public:
 //    }
 
 
-    Matrix() {
-        init((size_t)0, (size_t)0, 0, 0, 0);
+    Matrix(bool is_calculate = false) {
+        init((size_t)0, (size_t)0, 0, 0, 0, is_calculate);
     }
 
-    Matrix(size_t row, size_t col) {
-        init((size_t)1, (size_t)1, row, col, 0);
+    Matrix(size_t row, size_t col, double init_val, bool is_calculate = false){
+        init((size_t)1, (size_t)1, row, col, init_val, is_calculate);
     }
 
-    Matrix(size_t row, size_t col, double init_val){
-        init((size_t)1, (size_t)1, row, col, init_val);
+    Matrix(double* _matrix_point, size_t row, size_t col, bool is_calculate = false){
+        init(_matrix_point, 1, 1, row, col, is_calculate);
     }
 
-    Matrix(double* _matrix_point, size_t row, size_t col){
-        init(_matrix_point, 1, 1, row, col);
+    Matrix(size_t a, size_t b, size_t c, size_t d, double init_val, bool is_calculate = false){
+        init(a, b, c, d, init_val, is_calculate);
     }
 
-    Matrix(size_t a, size_t b, size_t c, size_t d, double init_val){
-        init(a, b, c, d, init_val);
+    Matrix(double* _matrix_point, size_t a, size_t b, size_t c, size_t d, bool is_calculate = false){
+        init(_matrix_point, a, b, c, d, is_calculate);
     }
 
-    Matrix(double* _matrix_point, size_t a, size_t b, size_t c, size_t d){
-        init(_matrix_point, a, b, c, d);
-    }
-
-    void init(double* _matrix_point, size_t a, size_t b, size_t c, size_t d){
-//        size_t temp[4] = {a, b, c, d};
+    void init(double* _matrix_point, size_t a, size_t b, size_t c, size_t d, bool is_calculate){
+        is_cal_result = is_calculate;
         size_1d = a * b * c * d;
-//        for (size_t i=0;i<4;i++){
-//            size_1d *= temp[i] == 0 ? 1 : temp[i];
-//        }
         shape[3] = d;
         shape[2] = c;
         shape[1] = b;
@@ -162,12 +155,9 @@ public:
 #endif
     }
 
-    void init(size_t a, size_t b, size_t c, size_t d, double init_val){
-//        size_t temp[4] = {a, b, c, d};
+    void init(size_t a, size_t b, size_t c, size_t d, double init_val, bool is_calculate){
+        is_cal_result = is_calculate;
         size_1d = a * b * c * d;
-//        for (size_t i=0;i<4;i++){
-//            size_1d *= temp[i] == 0 ? 1 : temp[i];
-//        }
         shape[3] = d;
         shape[2] = c;
         shape[1] = b;
@@ -182,6 +172,7 @@ public:
                 matrix[i] = init_val;
             }
         }
+
 #ifdef SHOW_MATRIX_PTR
         cout << "init_val construct " << this << endl;
 #endif
@@ -203,10 +194,6 @@ public:
 
     inline double& get(size_t row, size_t col){
         return Matrix::get(*this, row, col);
-    }
-
-    inline Matrix dot(Matrix &matrix_b) {
-        return Matrix::dot(*this, matrix_b);
     }
 
     inline void random_matrix(){
@@ -374,10 +361,11 @@ public:
 
 
 int main(){
-    Matrix a = Matrix(5, 5, 4);
-//    Matrix b;
-    a = a * a;
-
+    Matrix a(3, 3, 5), b(3, 3, 6);
+    Matrix temp;
+    temp = a - b;
+    temp = temp * temp;
+    temp.print_matrix();
 
     return 0;
 }

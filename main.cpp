@@ -113,36 +113,29 @@ public:
 //    }
 
 
-    Matrix() {
-        init((size_t)0, (size_t)0, 0, 0, 0);
+    Matrix(bool is_calculate = false) {
+        init((size_t)0, (size_t)0, 0, 0, 0, is_calculate);
     }
 
-    Matrix(size_t row, size_t col) {
-        init((size_t)1, (size_t)1, row, col, 0);
+    Matrix(size_t row, size_t col, double init_val, bool is_calculate = false){
+        init((size_t)1, (size_t)1, row, col, init_val, is_calculate);
     }
 
-    Matrix(size_t row, size_t col, double init_val){
-        init((size_t)1, (size_t)1, row, col, init_val);
+    Matrix(double* _matrix_point, size_t row, size_t col, bool is_calculate = false){
+        init(_matrix_point, 1, 1, row, col, is_calculate);
     }
 
-    Matrix(double* _matrix_point, size_t row, size_t col){
-        init(_matrix_point, 1, 1, row, col);
+    Matrix(size_t a, size_t b, size_t c, size_t d, double init_val, bool is_calculate = false){
+        init(a, b, c, d, init_val, is_calculate);
     }
 
-    Matrix(size_t a, size_t b, size_t c, size_t d, double init_val){
-        init(a, b, c, d, init_val);
+    Matrix(double* _matrix_point, size_t a, size_t b, size_t c, size_t d, bool is_calculate = false){
+        init(_matrix_point, a, b, c, d, is_calculate);
     }
 
-    Matrix(double* _matrix_point, size_t a, size_t b, size_t c, size_t d){
-        init(_matrix_point, a, b, c, d);
-    }
-
-    void init(double* _matrix_point, size_t a, size_t b, size_t c, size_t d){
-//        size_t temp[4] = {a, b, c, d};
+    void init(double* _matrix_point, size_t a, size_t b, size_t c, size_t d, bool is_calculate){
+        is_cal_result = is_calculate;
         size_1d = a * b * c * d;
-//        for (size_t i=0;i<4;i++){
-//            size_1d *= temp[i] == 0 ? 1 : temp[i];
-//        }
         shape[3] = d;
         shape[2] = c;
         shape[1] = b;
@@ -160,12 +153,9 @@ public:
 #endif
     }
 
-    void init(size_t a, size_t b, size_t c, size_t d, double init_val){
-//        size_t temp[4] = {a, b, c, d};
+    void init(size_t a, size_t b, size_t c, size_t d, double init_val, bool is_calculate){
+        is_cal_result = is_calculate;
         size_1d = a * b * c * d;
-//        for (size_t i=0;i<4;i++){
-//            size_1d *= temp[i] == 0 ? 1 : temp[i];
-//        }
         shape[3] = d;
         shape[2] = c;
         shape[1] = b;
@@ -180,6 +170,7 @@ public:
                 matrix[i] = init_val;
             }
         }
+
 #ifdef SHOW_MATRIX_PTR
         cout << "init_val construct " << this << endl;
 #endif
@@ -201,10 +192,6 @@ public:
 
     inline double& get(size_t row, size_t col){
         return Matrix::get(*this, row, col);
-    }
-
-    inline Matrix dot(Matrix &matrix_b) {
-        return Matrix::dot(*this, matrix_b);
     }
 
     inline void random_matrix(){
@@ -382,7 +369,8 @@ class MSE: public LossFunc{
 public:
     double forward(Matrix &y, Matrix &target) override{
         double result = 0;
-        Matrix temp = y - target;
+        Matrix temp;
+        temp = y - target;
         temp = temp * temp;
 
         for(size_t r=0; r < y.shape[2];++r)
@@ -403,10 +391,10 @@ class CrossEntropy: public LossFunc{
 public:
     double forward(Matrix &y, Matrix &target) override {
         double result = 0;
-        for (size_t i = 0; i< y.row(); i++){
-            for (size_t j = 0; j < y.col(); j++){
-                double _y = y.matrix[i][j];
-                double _target = target.matrix[i][j];
+        for (size_t i = 0; i< y.shape[2]; i++){
+            for (size_t j = 0; j < y.shape[3]; j++){
+                double _y = y.get(i, j);
+                double _target = target.get(i, j);
                 result += -_target * log(_y) - (1 - _target) * log(1 - _y);
             }
         }
@@ -414,13 +402,13 @@ public:
     }
 
     Matrix backward(Matrix &y, Matrix &target) override {
-        Matrix result(y.row(), y.col(), 0);
+        Matrix result(y.shape[2], y.shape[3], 0);
 
-        for (size_t i = 0; i< y.row(); i++){
-            for (size_t j = 0; j < y.col(); j++){
-                double _y = y.matrix[i][j];
-                double _target = target.matrix[i][j];
-                result.matrix[i][j] = (_y - _target) / (_y * (1 - _y));
+        for (size_t i = 0; i< y.shape[2]; i++){
+            for (size_t j = 0; j < y.shape[3]; j++){
+                double _y = y.get(i, j);
+                double _target = target.get(i, j);
+                result.get(i, j) = (_y - _target) / (_y * (1 - _y));
             }
         }
 
@@ -432,10 +420,10 @@ class CrossEntropy_SoftMax: public LossFunc{
 public:
     double forward(Matrix &y, Matrix &target) override {
         double result = 0;
-        for (size_t i = 0; i< y.row(); i++){
-            for (size_t j = 0; j < y.col(); j++){
-                if (target.matrix[i][j] == 1){
-                    result -= log(y.matrix[i][j]);
+        for (size_t i = 0; i< y.shape[2]; i++){
+            for (size_t j = 0; j < y.shape[3]; j++){
+                if (target.get(i, j) == 1){
+                    result -= log(y.get(i, j));
                     break;
                 }else{
                     continue;
@@ -446,10 +434,10 @@ public:
     }
 
     Matrix backward(Matrix &y, Matrix &target) override {
-        Matrix result = Matrix(y.row(), y.col(), 0);
-        for (size_t i = 0; i < y.row(); i++)
-            for (size_t j = 0; j < y.row(); j++)
-                result.matrix[i][j] = target.matrix[i][j] ? y.matrix[i][j] - 1 : y.matrix[i][j];
+        Matrix result = Matrix(y.shape[2], y.shape[3], 0);
+        for (size_t i = 0; i < y.shape[2]; i++)
+            for (size_t j = 0; j < y.shape[3]; j++)
+                result.get(i, j) = target.get(i, j) != 0 ? y.get(i, j) - 1 : y.get(i, j);
 
         return result;
     }
@@ -470,10 +458,10 @@ public:
 class Relu: public ActiveFunc{
 public:
     Matrix func_forward(Matrix x) override {
-        Matrix result = Matrix(x.row(), x.col(), 0);
-        for (size_t i = 0; i<x.row(); i++){
-            for (size_t j = 0; j<x.col(); j++){
-                    result.matrix[i][j] = x.matrix[i][j] > 0 ? x.matrix[i][j] : 0;
+        Matrix result = Matrix(x.shape[2], x.shape[3], 0);
+        for (size_t i = 0; i < x.shape[2]; i++){
+            for (size_t j = 0; j < x.shape[3]; j++){
+                    result.get(i, j) = x.get(i, j) > 0 ? x.get(i, j) : 0;
             }
         }
         return result;
