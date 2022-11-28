@@ -30,7 +30,7 @@ public:
     static Matrix& get_matrix(Matrix &_matrix, size_t a, size_t b){
         Matrix *result = new Matrix(
                 _matrix.matrix + _matrix.index_reflec_1d_[0] * a + _matrix.index_reflec_1d_[0] * b,
-                _matrix.shape[2], _matrix.shape[3]
+                _matrix.shape[2], _matrix.shape[3], true
                 );
         result->is_cal_result = true;
         return *result;
@@ -46,7 +46,7 @@ public:
     }
 
     // 取 start 到 end - 1 的row
-    inline static Matrix getRow(Matrix &_matrix, size_t start_row, size_t end_row){
+    inline static Matrix& getRow(Matrix &_matrix, size_t start_row, size_t end_row){
         if (
                 start_row > _matrix.shape[2] || end_row > _matrix.shape[2] ||
                 _matrix.shape[0] != 0 || end_row < start_row
@@ -58,7 +58,7 @@ public:
         Matrix *result = new Matrix(
                 &(Matrix::get(_matrix, start_row, 0)),
                 row_size,
-                _matrix.shape[3]);
+                _matrix.shape[3], true);
 
         return *result;
     }
@@ -76,7 +76,7 @@ public:
 
         const size_t row_result = row_a;
         const size_t col_result = col_b;
-        Matrix *result = new Matrix(row_result, col_result, 0);
+        Matrix *result = new Matrix(row_result, col_result, 0, true);
 
         for (int r = 0; r < row_result; r++) {
             for (int c = 0; c < col_result; c++) {
@@ -91,7 +91,7 @@ public:
     }
 
     inline static Matrix& transpose(Matrix &_matrix) {
-        Matrix *result = new Matrix(_matrix.shape[3], _matrix.shape[2], 0);
+        Matrix *result = new Matrix(_matrix.shape[3], _matrix.shape[2], 0, true);
         result->is_cal_result = true;
 
         for (size_t i = 0; i < _matrix.shape[2]; i++){
@@ -206,6 +206,10 @@ public:
         }
     }
 
+    void transpose(){
+        *this = Matrix::transpose(*this);
+    }
+
     Matrix& expand_row(size_t *target_shape){
         return expand_row(target_shape[2], target_shape[3]);
     }
@@ -242,7 +246,7 @@ public:
     }
 
     inline Matrix* copy(){
-        Matrix *result = new Matrix(matrix, shape[0], shape[1], shape[2], shape[3]);
+        Matrix *result = new Matrix(matrix, shape[0], shape[1], shape[2], shape[3], true);
 //        cout << "copy " << result << endl;
         return result;
     }

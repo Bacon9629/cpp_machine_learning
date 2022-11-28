@@ -3,7 +3,7 @@
 #include <cstdlib>
 #include <cmath>
 #include <cassert>
-//#include <vector>
+#include <vector>
 
 using namespace std;
 
@@ -28,7 +28,7 @@ public:
     static Matrix& get_matrix(Matrix &_matrix, size_t a, size_t b){
         Matrix *result = new Matrix(
                 _matrix.matrix + _matrix.index_reflec_1d_[0] * a + _matrix.index_reflec_1d_[0] * b,
-                _matrix.shape[2], _matrix.shape[3]
+                _matrix.shape[2], _matrix.shape[3], true
         );
         result->is_cal_result = true;
         return *result;
@@ -44,7 +44,7 @@ public:
     }
 
     // 取 start 到 end - 1 的row
-    inline static Matrix getRow(Matrix &_matrix, size_t start_row, size_t end_row){
+    inline static Matrix& getRow(Matrix &_matrix, size_t start_row, size_t end_row){
         if (
                 start_row > _matrix.shape[2] || end_row > _matrix.shape[2] ||
                 _matrix.shape[0] != 0 || end_row < start_row
@@ -56,7 +56,7 @@ public:
         Matrix *result = new Matrix(
                 &(Matrix::get(_matrix, start_row, 0)),
                 row_size,
-                _matrix.shape[3]);
+                _matrix.shape[3], true);
 
         return *result;
     }
@@ -74,7 +74,7 @@ public:
 
         const size_t row_result = row_a;
         const size_t col_result = col_b;
-        Matrix *result = new Matrix(row_result, col_result, 0);
+        Matrix *result = new Matrix(row_result, col_result, 0, true);
 
         for (int r = 0; r < row_result; r++) {
             for (int c = 0; c < col_result; c++) {
@@ -89,7 +89,7 @@ public:
     }
 
     inline static Matrix& transpose(Matrix &_matrix) {
-        Matrix *result = new Matrix(_matrix.shape[3], _matrix.shape[2], 0);
+        Matrix *result = new Matrix(_matrix.shape[3], _matrix.shape[2], 0, true);
         result->is_cal_result = true;
 
         for (size_t i = 0; i < _matrix.shape[2]; i++){
@@ -204,6 +204,10 @@ public:
         }
     }
 
+    void transpose(){
+        *this = Matrix::transpose(*this);
+    }
+
     Matrix& expand_row(size_t *target_shape){
         return expand_row(target_shape[2], target_shape[3]);
     }
@@ -240,7 +244,7 @@ public:
     }
 
     inline Matrix* copy(){
-        Matrix *result = new Matrix(matrix, shape[0], shape[1], shape[2], shape[3]);
+        Matrix *result = new Matrix(matrix, shape[0], shape[1], shape[2], shape[3], true);
 //        cout << "copy " << result << endl;
         return result;
     }
@@ -389,7 +393,7 @@ public:
     }
 
     Matrix& backward(Matrix &y, Matrix &target) override {
-        Matrix *result = new Matrix();
+        Matrix *result = new Matrix(true);
         *result = y - target;
         return *result;
     }
@@ -410,7 +414,7 @@ public:
     }
 
     Matrix& backward(Matrix &y, Matrix &target) override {
-        Matrix *result = new Matrix(y.shape[2], y.shape[3], 0);
+        Matrix *result = new Matrix(y.shape[2], y.shape[3], 0, true);
 
         for (size_t i = 0; i< y.shape[2]; i++){
             for (size_t j = 0; j < y.shape[3]; j++){
@@ -442,7 +446,7 @@ public:
     }
 
     Matrix& backward(Matrix &y, Matrix &target) override {
-        Matrix *result = new Matrix(y.shape[2], y.shape[3], 0);
+        Matrix *result = new Matrix(y.shape[2], y.shape[3], 0, true);
         for (size_t i = 0; i < y.shape[2]; i++)
             for (size_t j = 0; j < y.shape[3]; j++)
                 result->get(i, j) = target.get(i, j) != 0 ? y.get(i, j) - 1 : y.get(i, j);
@@ -466,7 +470,7 @@ public:
 class Relu: public ActiveFunc{
 public:
     Matrix& func_forward(Matrix &x) override {
-        Matrix *result = new Matrix(x.shape[2], x.shape[3], 0);
+        Matrix *result = new Matrix(x.shape[2], x.shape[3], 0, true);
         for (size_t i = 0; i < x.shape[2]; i++){
             for (size_t j = 0; j < x.shape[3]; j++){
                     result->get(i, j) = x.get(i, j) > 0 ? x.get(i, j) : 0;
@@ -476,7 +480,7 @@ public:
     }
 
     Matrix& func_backward(Matrix &x) override {
-        Matrix *result = new Matrix(x.shape[2], x.shape[3], 0);
+        Matrix *result = new Matrix(x.shape[2], x.shape[3], 0, true);
         for (size_t i = 0; i < x.shape[2]; i++){
             for (size_t j = 0; j < x.shape[3]; j++){
                 result->get(i, j) = x.get(i, j) > 0 ? 1 : 0;
@@ -489,7 +493,7 @@ public:
 class Sigmoid: public ActiveFunc{
 public:
     Matrix& func_forward(Matrix &x) override {
-        Matrix *result = new Matrix(x.shape[2], x.shape[3], 0);
+        Matrix *result = new Matrix(x.shape[2], x.shape[3], 0, true);
         for (size_t i = 0; i < x.shape[2]; i++){
             for (size_t j = 0; j < x.shape[3]; j++){
                 result->get(i, j) = 1 / (1 + exp(-x.get(i, j)));
@@ -501,7 +505,7 @@ public:
 
     Matrix& func_backward(Matrix &x) override {
         Matrix a = func_forward(x);
-        Matrix *result = new Matrix();
+        Matrix *result = new Matrix(true);
         *result = (a - 1) * -1 * a;
         return *result;
     }
@@ -510,7 +514,7 @@ public:
 class SoftMax_CrossEntropy: public ActiveFunc{
 public:
     Matrix& func_forward(Matrix &x) override {
-        Matrix *result = new Matrix(x.shape[2], x.shape[3], 0);
+        Matrix *result = new Matrix(x.shape[2], x.shape[3], 0, true);
         Matrix total(x.shape[2], 1, 0);
         Matrix max(x.shape[2], 1, 0);
         for (size_t i=0;i<x.shape[2];i++)
@@ -531,14 +535,14 @@ public:
     }
 
     Matrix& func_backward(Matrix &x) override {
-        return *(new Matrix(x.shape[2], x.shape[3], 1));
+        return *(new Matrix(x.shape[2], x.shape[3], 1, true));
     }
 };
 
 class Tanh:public ActiveFunc{
 public:
     Matrix& func_forward(Matrix &x) override {
-        Matrix *result = new Matrix(x.shape[2], x.shape[3], 0);
+        Matrix *result = new Matrix(x.shape[2], x.shape[3], 0, true);
         Matrix a = x.exp_();
         Matrix b = x.exp_() * -1;
         *result = (a - b) / (b - a);
@@ -546,7 +550,7 @@ public:
     }
 
     Matrix& func_backward(Matrix &x) override {
-        Matrix *result = new Matrix(x.shape[2], x.shape[3], 0);
+        Matrix *result = new Matrix(x.shape[2], x.shape[3], 0, true);
         Matrix a = x.exp_();
         Matrix b = x.exp_() * -1;
         Matrix c = (a - b) / (b - a);
@@ -652,36 +656,36 @@ public:
     }
 
     Matrix& construct_random_bool_list(size_t row, size_t col, double probability){
-        Matrix result = Matrix(row, col, 0);
+        Matrix *result = new Matrix(row, col, 0, true);
         double a = 0;
         double b = 0;
         for(size_t i = 0; i < row; i++){
             for(size_t j = 0; j < col; j++){
-                result.matrix[i][j] = (double(rand()) / RAND_MAX < probability) ? 0 : 1;
+                result->get(i, j) = (double(rand()) / RAND_MAX < probability) ? 0 : 1;
             }
         }
-        return result;
+        return *result;
     }
 
     void init(size_t input_size, size_t output_size, ActiveFunc *_activeFunc, Optimizer *_optimizer){
     }
 
-    Matrix forward(Matrix _x, bool is_train) override {
+    Matrix& forward(Matrix &_x, bool is_train) override {
         x = _x;
         if (!is_train){
-            return Matrix::times(&x, (1-dropout_probability));
+            return x * (1 - dropout_probability);
         }
 
-        dropout_matrix = construct_random_bool_list(x.row(), x.col(), dropout_probability);
-        x = Matrix::times(&x, &dropout_matrix);
+        dropout_matrix = construct_random_bool_list(x.shape[2], x.shape[3], dropout_probability);
+        x = x * dropout_matrix;
         return x;
     }
 
-    Matrix backward(Matrix _delta, bool is_train) override {
+    Matrix& backward(Matrix &_delta, bool is_train) override {
         if (!is_train){
             return _delta;
         }
-        delta = Matrix::times(&_delta, &dropout_matrix);
+        delta = delta * dropout_matrix;
         return delta;
     }
 
@@ -709,34 +713,35 @@ public:
     }
 
     void init(size_t input_size, size_t output_size, ActiveFunc *_activeFunc, Optimizer *_optimizer){
-        w = Matrix(input_size, output_size, 0);
+        w = *(new Matrix(input_size, output_size, 0));
         w.random_matrix();
-        b = Matrix(1, output_size, 0);
+        b = *(new Matrix(1, output_size, 0));
         b.random_matrix();
-        grad_w = Matrix(w.row(), w.col(), 0);
-        grad_b = Matrix(b.row(), b.col(), 0);
+        grad_w = *(new Matrix(w.shape[2], w.shape[3], 0));
+        grad_b = *(new Matrix(b.shape[2], b.shape[3], 0));
         active_func = _activeFunc;
         optimizer = _optimizer;
     }
 
-    Matrix forward(Matrix _x, bool is_train) override{
+    Matrix& forward(Matrix& _x, bool is_train) override{
         x = _x;
-        u = Matrix::dot(&x, &w);
-        u = Matrix::add(&u, &b);
+        u = Matrix::dot(x, w);
+        u = u + b;
         y = active_func->func_forward(u);
         return y;
     }
 
-    Matrix backward(Matrix _delta, bool is_train) override{
+    Matrix& backward(Matrix& _delta, bool is_train) override{
 
         Matrix active_func_back = active_func->func_backward(u);
-        Matrix my_delta = Matrix::times(&_delta, &active_func_back);
+        Matrix my_delta = delta * active_func_back;
+//        Matrix my_delta = Matrix::times(&_delta, &active_func_back);
 
-        Matrix x_t = x.transpose();
-        grad_w = Matrix::dot(&x_t, &my_delta);
+        Matrix x_t = Matrix::transpose(x);
+        grad_w = Matrix::dot(x_t, my_delta);
 
-        Matrix w_t = w.transpose();
-        delta = Matrix::dot(&my_delta, &w_t);
+        Matrix w_t = Matrix::transpose(w);
+        delta = Matrix::dot(my_delta, w_t);
         return delta;
     }
 
@@ -769,10 +774,10 @@ public:
     }
 
     void train(size_t epoch, Matrix &x, Matrix &target){  // 這裡擴充batch size
-        size_t _batch = batch == -1 ? x.row() : batch;
+        size_t _batch = batch == -1 ? x.shape[2] : batch;
 
         for (size_t i = 0; i < epoch; i++){
-            size_t data_left_size = x.row();  // 存著還有幾筆資料需要訓練
+            size_t data_left_size = x.shape[2];  // 存著還有幾筆資料需要訓練
 //            train_one_time(x, target);
 //            continue;
 
@@ -833,7 +838,7 @@ public:
 int main() {
 //    vector<vector<double>> temp_x = {{0, 0, 1}, {0, 1, 1}, {1, 0, 1}, {1, 1, 1}};
 
-    vector<vector<double>> temp_x =
+    double temp_x[][25] =
             {
                     {0, 1, 1, 0, 0,
                             0, 0, 1, 0, 0,
@@ -861,14 +866,14 @@ int main() {
                             0, 0, 0, 0, 1,
                             1, 1, 1, 1, 0}
             };
-    vector<vector<double>> temp_target =
+    double temp_target[][5] =
             {{1, 0, 0, 0, 0},
              {0, 1, 0, 0, 0},
              {0, 0, 1, 0, 0},
              {0, 0, 0, 1, 0},
              {0, 0, 0, 0, 1}};
 
-    vector<vector<double>> temp_validation =
+    double temp_validation[][25] =
             {
                     {0, 0, 1, 1, 0,
                             0, 0, 1, 1, 0,
@@ -897,7 +902,7 @@ int main() {
                             1, 1, 1, 1, 0}
             };
 
-    vector<vector<double>> temp_validation_target =
+    double temp_validation_target[][5] =
             {{1, 0, 0, 0, 0},
              {0, 1, 0, 0, 0},
              {0, 0, 1, 0, 0},
@@ -909,10 +914,10 @@ int main() {
 //    vector<vector<double>> temp_x = {{0, 0, 1}, {0, 1, 1}, {1, 0, 1}, {1, 1, 1}};
 //    vector<vector<double>> temp_target = {{0}, {1}, {1}, {0}};
     // data init
-    Matrix x = Matrix(temp_x);
-    Matrix x_target = Matrix(temp_target);
-    Matrix validation = Matrix(temp_validation);
-    Matrix validation_target = Matrix(temp_validation_target);
+    Matrix x = *(new Matrix(temp_x[0], 5, 5, 5, 1));
+    Matrix x_target = *(new Matrix(temp_target[0], 1, 1, 5, 5));
+    Matrix validation = *(new Matrix(temp_validation[0], 5, 5, 5, 1));
+    Matrix validation_target = *(new Matrix(temp_validation_target[0], 1, 1, 5, 5));
 
     // active func
     Sigmoid sigmoid = Sigmoid();
