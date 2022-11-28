@@ -45,13 +45,16 @@ public:
 
     // 取 start 到 end - 1 的row
     inline static Matrix& getRow(Matrix &_matrix, size_t start_row, size_t end_row){
-        if (
-                start_row > _matrix.shape[2] || end_row > _matrix.shape[2] ||
-                _matrix.shape[0] != 0 || end_row < start_row
-                )
-        {
-            cout << "shape_wrong: Matrix getRow" << endl;
-        }
+//        if (
+//                start_row > _matrix.shape[2] || end_row > _matrix.shape[2] ||
+//                _matrix.shape[0] != 0 || end_row < start_row
+//                )
+//        {
+//            cout << "shape_wrong: Matrix getRow" << endl;
+//        }
+        assert(!(start_row > _matrix.shape[2] || end_row > _matrix.shape[2] ||
+                 _matrix.shape[0] != 0 || end_row < start_row));
+
         size_t row_size = end_row - start_row;
         Matrix *result = new Matrix(
                 &(Matrix::get(_matrix, start_row, 0)),
@@ -773,6 +776,35 @@ public:
         layers.push_back(layer);
     }
 
+    void train_img_input(size_t epoch, Matrix &x, Matrix &target){
+        size_t _batch = batch == -1 ? x.shape[0] : batch;
+
+        for (size_t i = 0; i < epoch; i++){
+            size_t data_left_size = x.shape[0];  // 存著還有幾筆資料需要訓練
+//            train_one_time(x, target);
+//            continue;
+
+            for (size_t j = 0; data_left_size > 0 ; j++){
+                if (data_left_size < _batch){
+                    // 如果資料量"不足"填滿一個batch
+                    Matrix _x = Matrix::getRow(x, j * _batch, j * _batch + data_left_size);
+                    Matrix _target = Matrix::getRow(target, j * _batch, j * _batch + data_left_size);
+
+                    train_one_time(_x, _target);
+                    data_left_size = 0;
+                }else{
+                    // 如果資料量"足夠"填滿一個batch
+                    Matrix _x = Matrix::getRow(x, j * _batch, j * _batch + _batch);
+                    Matrix _target = Matrix::getRow(target, j * _batch, j * _batch + _batch);
+
+                    train_one_time(_x, _target);
+                    data_left_size -= _batch;
+                }
+
+            }
+        }
+    }
+
     void train(size_t epoch, Matrix &x, Matrix &target){  // 這裡擴充batch size
         size_t _batch = batch == -1 ? x.shape[2] : batch;
 
@@ -936,7 +968,7 @@ int main() {
     frame.add(new DropoutLayer(32, 32, &softmax, new SGD(0.001), 0.5));
     frame.add(new DenseLayer(32, 5, &softmax, new SGD(0.1)));
 
-    frame.train(6000, x, x_target);
+    frame.train(100, x, x_target);
 
 
     frame.show(validation, validation_target);

@@ -2,7 +2,7 @@
 #include <time.h>
 #include <cstdlib>
 #include <cmath>
-#include <cassert>
+#include <assert.h>
 //#include <vector>
 
 #define SHOW_MATRIX_PTR
@@ -45,15 +45,56 @@ public:
         return get(_matrix, 0, 0, row, col);
     }
 
+    inline static Matrix& getPicture_row(Matrix &_matrix, size_t start_picture, size_t end_picture){
+        assert(!(start_picture > _matrix.shape[0] || end_picture > _matrix.shape[0] ||
+                 _matrix.shape[0] != 0 || end_picture < start_picture));
+
+        size_t row_size = end_picture - start_picture;
+        Matrix *result = new Matrix(
+                &(Matrix::get(_matrix, start_picture, 0)),
+                row_size,
+                _matrix.shape[3], true);
+
+        return *result;
+    }
+
+    // 取 start 到 end - 1 的row
+    inline static Matrix& getPictures(Matrix &_matrix, size_t start_picture, size_t end_picture){
+//        if (
+//                start_row > _matrix.shape[2] || end_row > _matrix.shape[2] ||
+//                _matrix.shape[0] != 0 || end_row < start_row
+//                )
+//        {
+//            cout << "shape_wrong: Matrix getRow" << endl;
+//        }
+
+        assert(!(start_picture > _matrix.shape[0] || end_picture > _matrix.shape[0] ||
+                 end_picture < start_picture));
+
+        size_t pictures_size = end_picture - start_picture;
+        Matrix *result = new Matrix(
+                &(Matrix::get(_matrix, start_picture, 0, 0, 0)),
+                pictures_size,
+                _matrix.shape[1],
+                _matrix.shape[2],
+                _matrix.shape[3], true);
+
+        return *result;
+    }
+
     // 取 start 到 end - 1 的row
     inline static Matrix& getRow(Matrix &_matrix, size_t start_row, size_t end_row){
-        if (
-                start_row > _matrix.shape[2] || end_row > _matrix.shape[2] ||
-                _matrix.shape[0] != 0 || end_row < start_row
-                )
-        {
-            cout << "shape_wrong: Matrix getRow" << endl;
-        }
+//        if (
+//                start_row > _matrix.shape[2] || end_row > _matrix.shape[2] ||
+//                _matrix.shape[0] != 0 || end_row < start_row
+//                )
+//        {
+//            cout << "shape_wrong: Matrix getRow" << endl;
+//        }
+
+        assert(!(start_row > _matrix.shape[2] || end_row > _matrix.shape[2] ||
+               _matrix.shape[0] != 0 || end_row < start_row));
+
         size_t row_size = end_row - start_row;
         Matrix *result = new Matrix(
                 &(Matrix::get(_matrix, start_row, 0)),
@@ -133,15 +174,7 @@ public:
 
     void init(double* _matrix_point, size_t a, size_t b, size_t c, size_t d, bool is_calculate){
         is_cal_result = is_calculate;
-        size_1d = a * b * c * d;
-        shape[3] = d;
-        shape[2] = c;
-        shape[1] = b;
-        shape[0] = a;
-        index_reflec_1d_[3] = 1;
-        index_reflec_1d_[2] = d;
-        index_reflec_1d_[1] = d * c;
-        index_reflec_1d_[0] = b * d * c;
+        reshape(a, b, c, d);
         matrix = new double [size_1d];
 //        matrix = (double*) calloc(size_1d, sizeof(double));
         memcpy(matrix, _matrix_point, sizeof(double) * size_1d);
@@ -153,15 +186,7 @@ public:
 
     void init(size_t a, size_t b, size_t c, size_t d, double init_val, bool is_calculate){
         is_cal_result = is_calculate;
-        size_1d = a * b * c * d;
-        shape[3] = d;
-        shape[2] = c;
-        shape[1] = b;
-        shape[0] = a;
-        index_reflec_1d_[3] = 1;
-        index_reflec_1d_[2] = d;
-        index_reflec_1d_[1] = d * c;
-        index_reflec_1d_[0] = b * d * c;
+        reshape(a, b, c, d);
         matrix = new double [size_1d]();
         if (init_val != 0){
             for (size_t i = 0; i < size_1d; i++){
@@ -179,9 +204,20 @@ public:
         cout << "free " << this << endl;
 #endif
         if (matrix != NULL){
-//            free(matrix);
             delete []matrix;
         }
+    }
+
+    inline void reshape(size_t a, size_t b, size_t c, size_t d){
+        size_1d = a * b * c * d;
+        shape[3] = d;
+        shape[2] = c;
+        shape[1] = b;
+        shape[0] = a;
+        index_reflec_1d_[3] = 1;
+        index_reflec_1d_[2] = d;
+        index_reflec_1d_[1] = d * c;
+        index_reflec_1d_[0] = b * d * c;
     }
 
     inline double& get(size_t a, size_t b, size_t c, size_t d){
