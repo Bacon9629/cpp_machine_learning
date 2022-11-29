@@ -312,7 +312,7 @@ public:
 
 class Optimizer{
 public:
-    virtual void gradient_decent(Matrix &w, Matrix &b, Matrix &grad_w, Matrix &grad_b) = 0;
+    virtual void gradient_descent(Matrix &w, Matrix &b, Matrix &grad_w, Matrix &grad_b) = 0;
 };
 
 class MMT: public Optimizer{
@@ -335,7 +335,7 @@ public:
         beta = _beta;
     }
 
-    void gradient_decent(Matrix &w, Matrix &b, Matrix &grad_w, Matrix &grad_b) override {
+    void gradient_descent(Matrix &w, Matrix &b, Matrix &grad_w, Matrix &grad_b) override {
 //        last_grad_w =  alpha * grad_w + beta * last_grad_w;
 //        w -= last_grad_w;
         if (last_grad_w.row() == 0){
@@ -439,7 +439,7 @@ public:
     }
 
     void update() override{
-        optimizer->gradient_decent(w, b, grad_w, grad_b);
+        optimizer->gradient_descent(w, b, grad_w, grad_b);
     }
 
 };

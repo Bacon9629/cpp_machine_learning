@@ -312,7 +312,7 @@ public:
 
 class Optimizer{
 public:
-    virtual void gradient_decent(Matrix &w, Matrix &b, Matrix &grad_w, Matrix &grad_b) = 0;
+    virtual void gradient_descent(Matrix &w, Matrix &b, Matrix &grad_w, Matrix &grad_b) = 0;
 };
 
 class XOR: public Optimizer{
@@ -323,7 +323,7 @@ public:
         eta = _eta;
     }
 
-    void gradient_decent(Matrix &w, Matrix &b, Matrix &grad_w, Matrix &grad_b) override {
+    void gradient_descent(Matrix &w, Matrix &b, Matrix &grad_w, Matrix &grad_b) override {
         double _temp = eta / w.row();
 
         Matrix temp_w = Matrix::times(&grad_w, _temp);
