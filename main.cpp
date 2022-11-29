@@ -22,7 +22,7 @@ public:
     double *matrix;
     size_t shape[4] = {0, 0, 0, 0};
     size_t index_reflec_1d_[4] = {0, 0, 0, 0};
-    size_t size_1d = 1;
+    size_t size_1d = -1;
     bool is_cal_result = false;  // 此matrix是計算中得出的結果
 
     static Matrix& get_matrix(Matrix &_matrix, size_t a, size_t b){
@@ -43,6 +43,45 @@ public:
         return get(_matrix, 0, 0, row, col);
     }
 
+    inline static Matrix& getPicture_row(Matrix &_matrix, size_t start_picture, size_t end_picture){
+        assert(!(start_picture > _matrix.shape[0] || end_picture > _matrix.shape[0] ||
+                 _matrix.shape[0] != 0 || end_picture < start_picture));
+
+        size_t row_size = end_picture - start_picture;
+        Matrix *result = new Matrix(
+                &(Matrix::get(_matrix, start_picture, 0)),
+                row_size,
+                _matrix.shape[2],
+                _matrix.shape[1],
+                _matrix.shape[0], true);
+        return *result;
+    }
+
+    // 取 start 到 end - 1 的row
+    inline static Matrix& getPictures(Matrix &_matrix, size_t start_picture, size_t end_picture){
+//        if (
+//                start_row > _matrix.shape[2] || end_row > _matrix.shape[2] ||
+//                _matrix.shape[0] != 0 || end_row < start_row
+//                )
+//        {
+//            cout << "shape_wrong: Matrix getRow" << endl;
+//        }
+
+        assert(start_picture < _matrix.shape[0]);
+        assert(end_picture <= _matrix.shape[0]);
+        assert(end_picture > start_picture);
+
+        size_t pictures_size = end_picture - start_picture;
+        Matrix *result = new Matrix(
+                &(Matrix::get(_matrix, start_picture, 0, 0, 0)),
+                pictures_size,
+                _matrix.shape[1],
+                _matrix.shape[2],
+                _matrix.shape[3], true);
+
+        return *result;
+    }
+
     // 取 start 到 end - 1 的row
     inline static Matrix& getRow(Matrix &_matrix, size_t start_row, size_t end_row){
 //        if (
@@ -52,8 +91,9 @@ public:
 //        {
 //            cout << "shape_wrong: Matrix getRow" << endl;
 //        }
-        assert(!(start_row > _matrix.shape[2] || end_row > _matrix.shape[2] ||
-                 _matrix.shape[0] != 0 || end_row < start_row));
+        assert(start_row < _matrix.shape[2]);
+        assert(end_row <= _matrix.shape[2]);
+        assert(end_row > start_row);
 
         size_t row_size = end_row - start_row;
         Matrix *result = new Matrix(
@@ -70,10 +110,7 @@ public:
         size_t row_b = matrix_b.shape[2];
         size_t col_b = matrix_b.shape[3];
 
-        if (col_a != row_b){
-            std::cout << "shape wrong" << std::endl;
-            assert("matrix error - dot");
-        }
+        assert(col_a == row_b);
 
         const size_t row_result = row_a;
         const size_t col_result = col_b;
@@ -134,15 +171,7 @@ public:
 
     void init(double* _matrix_point, size_t a, size_t b, size_t c, size_t d, bool is_calculate){
         is_cal_result = is_calculate;
-        size_1d = a * b * c * d;
-        shape[3] = d;
-        shape[2] = c;
-        shape[1] = b;
-        shape[0] = a;
-        index_reflec_1d_[3] = 1;
-        index_reflec_1d_[2] = d;
-        index_reflec_1d_[1] = d * c;
-        index_reflec_1d_[0] = b * d * c;
+        reshape(a, b, c, d);
         matrix = new double [size_1d];
 //        matrix = (double*) calloc(size_1d, sizeof(double));
         memcpy(matrix, _matrix_point, sizeof(double) * size_1d);
@@ -154,15 +183,7 @@ public:
 
     void init(size_t a, size_t b, size_t c, size_t d, double init_val, bool is_calculate){
         is_cal_result = is_calculate;
-        size_1d = a * b * c * d;
-        shape[3] = d;
-        shape[2] = c;
-        shape[1] = b;
-        shape[0] = a;
-        index_reflec_1d_[3] = 1;
-        index_reflec_1d_[2] = d;
-        index_reflec_1d_[1] = d * c;
-        index_reflec_1d_[0] = b * d * c;
+        reshape(a, b, c, d);
         matrix = new double [size_1d]();
         if (init_val != 0){
             for (size_t i = 0; i < size_1d; i++){
@@ -180,9 +201,25 @@ public:
         cout << "free " << this << endl;
 #endif
         if (matrix != NULL){
-//            free(matrix);
             delete []matrix;
         }
+    }
+
+    inline void reshape(size_t a, size_t b, size_t c, size_t d){
+        size_t temp = a * b * c * d;
+        if (size_1d != -1){
+            assert(size_1d == temp);
+        }else{
+            size_1d = a * b * c * d;
+        }
+        shape[3] = d;
+        shape[2] = c;
+        shape[1] = b;
+        shape[0] = a;
+        index_reflec_1d_[3] = 1;
+        index_reflec_1d_[2] = d;
+        index_reflec_1d_[1] = d * c;
+        index_reflec_1d_[0] = b * d * c;
     }
 
     inline double& get(size_t a, size_t b, size_t c, size_t d){
@@ -291,9 +328,28 @@ public:
     Matrix& operator+ (Matrix &_matrix){
         Matrix *result = calculate_check_need_copy();
         double* temp = result->matrix;
-        for (size_t i = 0; i < size_1d; i++){
-            temp[i] += _matrix.matrix[i];
+
+        if (_matrix.shape[0] == 1 && shape[0] == 1 && _matrix.shape[1] == 1 && shape[1] == 1 &&
+            _matrix.shape[3] == shape[3]){
+
+            for (size_t i = 0; i < size_1d; i += shape[3]){
+                for (size_t j = 0; j < shape[3]; j++) {
+                    temp[i + j] += _matrix.matrix[j];
+                }
+            }
+
+        }else{
+            assert(_matrix.shape[0] == this->shape[0]);
+            assert(_matrix.shape[1] == this->shape[1]);
+            assert(_matrix.shape[2] == this->shape[2]);
+            assert(_matrix.shape[3] == this->shape[3]);
+
+            for (size_t i = 0; i < size_1d; i++){
+                temp[i] += _matrix.matrix[i];
+            }
         }
+
+
         return *result;
     }
 
@@ -309,8 +365,25 @@ public:
     Matrix& operator- (Matrix &_matrix){
         Matrix *result = calculate_check_need_copy();
         double* temp = result->matrix;
-        for (size_t i = 0; i < size_1d; i++){
-            temp[i] -= _matrix.matrix[i];
+
+        if (_matrix.shape[0] == 1 && shape[0] == 1 && _matrix.shape[1] == 1 && shape[1] == 1 &&
+            _matrix.shape[3] == shape[3]){
+
+            for (size_t i = 0; i < size_1d; i += shape[3]){
+                for (size_t j = 0; j < shape[3]; j++) {
+                    temp[i + j] -= _matrix.matrix[j];
+                }
+            }
+
+        }else{
+            assert(_matrix.shape[0] == this->shape[0]);
+            assert(_matrix.shape[1] == this->shape[1]);
+            assert(_matrix.shape[2] == this->shape[2]);
+            assert(_matrix.shape[3] == this->shape[3]);
+
+            for (size_t i = 0; i < size_1d; i++){
+                temp[i] -= _matrix.matrix[i];
+            }
         }
         return *result;
     }
@@ -327,8 +400,24 @@ public:
     Matrix& operator* (Matrix &_matrix){
         Matrix *result = calculate_check_need_copy();
         double* temp = result->matrix;
-        for (size_t i = 0; i < size_1d; i++){
-            temp[i] *= _matrix.matrix[i];
+        if (_matrix.shape[0] == 1 && shape[0] == 1 && _matrix.shape[1] == 1 && shape[1] == 1 &&
+            _matrix.shape[3] == shape[3]){
+
+            for (size_t i = 0; i < size_1d; i += shape[3]){
+                for (size_t j = 0; j < shape[3]; j++) {
+                    temp[i + j] *= _matrix.matrix[j];
+                }
+            }
+
+        }else{
+            assert(_matrix.shape[0] == this->shape[0]);
+            assert(_matrix.shape[1] == this->shape[1]);
+            assert(_matrix.shape[2] == this->shape[2]);
+            assert(_matrix.shape[3] == this->shape[3]);
+
+            for (size_t i = 0; i < size_1d; i++){
+                temp[i] *= _matrix.matrix[i];
+            }
         }
         return *result;
     }
@@ -345,8 +434,24 @@ public:
     Matrix& operator/ (Matrix &_matrix){
         Matrix *result = calculate_check_need_copy();
         double* temp = result->matrix;
-        for (size_t i = 0; i < size_1d; i++){
-            temp[i] /= _matrix.matrix[i];
+        if (_matrix.shape[0] == 1 && shape[0] == 1 && _matrix.shape[1] == 1 && shape[1] == 1 &&
+            _matrix.shape[3] == shape[3]){
+
+            for (size_t i = 0; i < size_1d; i += shape[3]){
+                for (size_t j = 0; j < shape[3]; j++) {
+                    temp[i + j] /= _matrix.matrix[j];
+                }
+            }
+
+        }else{
+            assert(_matrix.shape[0] == this->shape[0]);
+            assert(_matrix.shape[1] == this->shape[1]);
+            assert(_matrix.shape[2] == this->shape[2]);
+            assert(_matrix.shape[3] == this->shape[3]);
+
+            for (size_t i = 0; i < size_1d; i++){
+                temp[i] /= _matrix.matrix[i];
+            }
         }
         return *result;
     }
@@ -387,7 +492,7 @@ public:
         Matrix temp = y - target;
         temp = temp * temp;
 
-        for(size_t r=0; r < y.shape[2];++r)
+        for(size_t r = 0; r < y.shape[2];++r)
             for(size_t c = 0; c < y.shape[3];++c)
                 result += temp.get(r, c);
 
@@ -474,21 +579,38 @@ class Relu: public ActiveFunc{
 public:
     Matrix& func_forward(Matrix &x) override {
         Matrix *result = new Matrix(x.shape[2], x.shape[3], 0, true);
-        for (size_t i = 0; i < x.shape[2]; i++){
-            for (size_t j = 0; j < x.shape[3]; j++){
-                    result->get(i, j) = x.get(i, j) > 0 ? x.get(i, j) : 0;
-            }
+        double* result_matrix_pointer = result->matrix;
+        double* x_matrix_pointer = x.matrix;
+
+        for (size_t i = 0; i < x.size_1d; i++){
+            double temp = x_matrix_pointer[i];
+            result_matrix_pointer[i] = temp > 0 ? temp : 0;
         }
+
+//        for (size_t i = 0; i < x.shape[2]; i++){
+//            for (size_t j = 0; j < x.shape[3]; j++){
+//                double temp = x.get(i, j);
+//                result->get(i, j) = temp > 0 ? temp : 0;
+//            }
+//        }
         return *result;
     }
 
     Matrix& func_backward(Matrix &x) override {
         Matrix *result = new Matrix(x.shape[2], x.shape[3], 0, true);
-        for (size_t i = 0; i < x.shape[2]; i++){
-            for (size_t j = 0; j < x.shape[3]; j++){
-                result->get(i, j) = x.get(i, j) > 0 ? 1 : 0;
-            }
+        double* result_matrix_pointer = result->matrix;
+        double* x_matrix_pointer = x.matrix;
+
+        for (size_t i = 0; i < x.size_1d; i++){
+            double temp = x_matrix_pointer[i];
+            result_matrix_pointer[i] = temp > 0 ? 1 : 0;
         }
+
+//        for (size_t i = 0; i < x.shape[2]; i++){
+//            for (size_t j = 0; j < x.shape[3]; j++){
+//                result->get(i, j) = x.get(i, j) > 0 ? 1 : 0;
+//            }
+//        }
         return *result;
     }
 };
@@ -497,12 +619,21 @@ class Sigmoid: public ActiveFunc{
 public:
     Matrix& func_forward(Matrix &x) override {
         Matrix *result = new Matrix(x.shape[2], x.shape[3], 0, true);
-        for (size_t i = 0; i < x.shape[2]; i++){
-            for (size_t j = 0; j < x.shape[3]; j++){
-                result->get(i, j) = 1 / (1 + exp(-x.get(i, j)));
+        double* result_pointer = result->matrix;
+        double* x_pointer = x.matrix;
 
-            }
+        for (size_t i = 0; i < x.size_1d; i++){
+            double temp = x_pointer[i];
+            result_pointer[i] = 1 / (1 + exp(-x_pointer[i]));
         }
+
+
+//        for (size_t i = 0; i < x.shape[2]; i++){
+//            for (size_t j = 0; j < x.shape[3]; j++){
+//                result->get(i, j) = 1 / (1 + exp(-x.get(i, j)));
+//
+//            }
+//        }
         return *result;
     }
 
@@ -521,8 +652,14 @@ public:
         Matrix total(x.shape[2], 1, 0);
         Matrix max(x.shape[2], 1, 0);
         for (size_t i=0;i<x.shape[2];i++)
-            for (size_t j=0;j<x.shape[3];j++)
-                max.get(i, 0) = x.get(i, j) > max.get(i, 0) ? x.get(i, j) : max.get(i, 0);
+            for (size_t j=0;j<x.shape[3];j++){
+                double* now_max_ptr = &(max.get(i, 0));
+                double* now_x_ptr = &(max.get(i, 0));
+                if (*now_x_ptr > *now_max_ptr){
+                    *now_max_ptr = *now_x_ptr;
+                }
+//                max.get(i, 0) = x.get(i, j) > max.get(i, 0) ? x.get(i, j) : max.get(i, 0);
+            }
 
         for (size_t i=0;i<x.shape[2];i++)
             for (size_t j=0;j<x.shape[3];j++)
@@ -531,8 +668,6 @@ public:
         for (size_t i=0;i<x.shape[2];i++)
             for (size_t j=0;j<x.shape[3];j++)
                 result->get(i, j) = exp(x.get(i, j) - max.get(i, 0)) / total.get(i, 0);
-
-
 
         return *result;
     }
@@ -582,7 +717,7 @@ public:
     }
 
     void gradient_decent(Matrix &w, Matrix &b, Matrix &grad_w, Matrix &grad_b) override {
-        double _eta = eta / w.shape[2];
+        double _eta = eta / double (w.shape[2]);
         w = w - (grad_w * _eta);
         b = b - (grad_b * _eta);
     }
@@ -688,7 +823,8 @@ public:
         if (!is_train){
             return _delta;
         }
-        delta = delta * dropout_matrix;
+        delta = _delta * dropout_matrix;
+
         return delta;
     }
 
@@ -727,6 +863,7 @@ public:
     }
 
     Matrix& forward(Matrix& _x, bool is_train) override{
+        assert(_x.shape[0] == 1 || _x.shape[1] == 1);
         x = _x;
         u = Matrix::dot(x, w);
         u = u + b;
@@ -737,8 +874,7 @@ public:
     Matrix& backward(Matrix& _delta, bool is_train) override{
 
         Matrix active_func_back = active_func->func_backward(u);
-        Matrix my_delta = delta * active_func_back;
-//        Matrix my_delta = Matrix::times(&_delta, &active_func_back);
+        Matrix my_delta = _delta * active_func_back;
 
         Matrix x_t = Matrix::transpose(x);
         grad_w = Matrix::dot(x_t, my_delta);
@@ -787,15 +923,15 @@ public:
             for (size_t j = 0; data_left_size > 0 ; j++){
                 if (data_left_size < _batch){
                     // 如果資料量"不足"填滿一個batch
-                    Matrix _x = Matrix::getRow(x, j * _batch, j * _batch + data_left_size);
-                    Matrix _target = Matrix::getRow(target, j * _batch, j * _batch + data_left_size);
+                    Matrix _x = Matrix::getPicture_row(x, j * _batch, j * _batch + data_left_size);
+                    Matrix _target = Matrix::getPicture_row(target, j * _batch, j * _batch + data_left_size);
 
                     train_one_time(_x, _target);
                     data_left_size = 0;
                 }else{
                     // 如果資料量"足夠"填滿一個batch
-                    Matrix _x = Matrix::getRow(x, j * _batch, j * _batch + _batch);
-                    Matrix _target = Matrix::getRow(target, j * _batch, j * _batch + _batch);
+                    Matrix _x = Matrix::getPicture_row(x, j * _batch, j * _batch + _batch);
+                    Matrix _target = Matrix::getPicture_row(target, j * _batch, j * _batch + _batch);
 
                     train_one_time(_x, _target);
                     data_left_size -= _batch;
@@ -812,7 +948,6 @@ public:
             size_t data_left_size = x.shape[2];  // 存著還有幾筆資料需要訓練
 //            train_one_time(x, target);
 //            continue;
-
             for (size_t j = 0; data_left_size > 0 ; j++){
                 if (data_left_size < _batch){
                     // 如果資料量"不足"填滿一個batch
@@ -826,6 +961,7 @@ public:
                     Matrix _x = Matrix::getRow(x, j * _batch, j * _batch + _batch);
                     Matrix _target = Matrix::getRow(target, j * _batch, j * _batch + _batch);
 
+//                    cout << i << endl;
                     train_one_time(_x, _target);
                     data_left_size -= _batch;
                 }
@@ -839,6 +975,7 @@ public:
         for (size_t i=0;i<layers.size();++i){
             y = layers[i]->forward(y, true);
         }
+
         Matrix delta = lossFunc->backward(y, target);
         for (size_t i = 0; i < layers.size(); i++){  // 這裡會減到零以下，因此不能使用無號數
             delta = layers[layers.size() - 1 - i]->backward(delta, true);
@@ -867,9 +1004,7 @@ public:
 
 };
 
-int main() {
-//    vector<vector<double>> temp_x = {{0, 0, 1}, {0, 1, 1}, {1, 0, 1}, {1, 1, 1}};
-
+void img_train(){
     double temp_x[][25] =
             {
                     {0, 1, 1, 0, 0,
@@ -951,6 +1086,11 @@ int main() {
     Matrix validation = *(new Matrix(temp_validation[0], 5, 5, 5, 1));
     Matrix validation_target = *(new Matrix(temp_validation_target[0], 1, 1, 5, 5));
 
+    x.reshape(1, 1, 5, 25);
+    x_target.reshape(1, 1, 5, 5);
+    validation.reshape(1, 1, 5, 25);
+    validation_target.reshape(1, 1, 5, 5);
+
     // active func
     Sigmoid sigmoid = Sigmoid();
     SoftMax_CrossEntropy softmax = SoftMax_CrossEntropy();
@@ -973,5 +1113,27 @@ int main() {
 
     frame.show(validation, validation_target);
     frame.show(x, x_target);
+}
+
+void type_a_train(){
+
+    double temp_x[][3] = {{0, 0, 1}, {0, 1, 1}, {1, 0, 1}, {1, 1, 1}};
+    double temp_target[][1] = {{0}, {0}, {1}, {1}};
+
+    Matrix x(temp_x[0], 4, 3);
+    Matrix target(temp_target[0], 4, 1);
+
+    MyFrame myFrame(new MSE(), -1);
+    myFrame.add(new DenseLayer(3, 1, new Sigmoid(), new SGD(0.3)));
+
+    myFrame.train(100, x, target);
+
+    myFrame.show(x, target);
+
+
+}
+
+int main() {
+    type_a_train();
     return 0;
 }

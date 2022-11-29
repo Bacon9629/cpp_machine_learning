@@ -24,14 +24,14 @@ public:
     double *matrix;
     size_t shape[4] = {0, 0, 0, 0};
     size_t index_reflec_1d_[4] = {0, 0, 0, 0};
-    size_t size_1d = 1;
+    size_t size_1d = -1;
     bool is_cal_result = false;  // 此matrix是計算中得出的結果
 
     static Matrix& get_matrix(Matrix &_matrix, size_t a, size_t b){
         Matrix *result = new Matrix(
                 _matrix.matrix + _matrix.index_reflec_1d_[0] * a + _matrix.index_reflec_1d_[0] * b,
                 _matrix.shape[2], _matrix.shape[3], true
-                );
+        );
         result->is_cal_result = true;
         return *result;
     }
@@ -53,8 +53,9 @@ public:
         Matrix *result = new Matrix(
                 &(Matrix::get(_matrix, start_picture, 0)),
                 row_size,
-                _matrix.shape[3], true);
-
+                _matrix.shape[2],
+                _matrix.shape[1],
+                _matrix.shape[0], true);
         return *result;
     }
 
@@ -68,8 +69,9 @@ public:
 //            cout << "shape_wrong: Matrix getRow" << endl;
 //        }
 
-        assert(!(start_picture > _matrix.shape[0] || end_picture > _matrix.shape[0] ||
-                 end_picture < start_picture));
+        assert(start_picture < _matrix.shape[0]);
+        assert(end_picture <= _matrix.shape[0]);
+        assert(end_picture > start_picture);
 
         size_t pictures_size = end_picture - start_picture;
         Matrix *result = new Matrix(
@@ -91,9 +93,9 @@ public:
 //        {
 //            cout << "shape_wrong: Matrix getRow" << endl;
 //        }
-
-        assert(!(start_row > _matrix.shape[2] || end_row > _matrix.shape[2] ||
-               _matrix.shape[0] != 0 || end_row < start_row));
+        assert(start_row < _matrix.shape[2]);
+        assert(end_row <= _matrix.shape[2]);
+        assert(end_row > start_row);
 
         size_t row_size = end_row - start_row;
         Matrix *result = new Matrix(
@@ -110,10 +112,7 @@ public:
         size_t row_b = matrix_b.shape[2];
         size_t col_b = matrix_b.shape[3];
 
-        if (col_a != row_b){
-            std::cout << "shape wrong" << std::endl;
-            assert("matrix error - dot");
-        }
+        assert(col_a == row_b);
 
         const size_t row_result = row_a;
         const size_t col_result = col_b;
@@ -209,7 +208,12 @@ public:
     }
 
     inline void reshape(size_t a, size_t b, size_t c, size_t d){
-        size_1d = a * b * c * d;
+        size_t temp = a * b * c * d;
+        if (size_1d != -1){
+            assert(size_1d == temp);
+        }else{
+            size_1d = a * b * c * d;
+        }
         shape[3] = d;
         shape[2] = c;
         shape[1] = b;
@@ -232,7 +236,7 @@ public:
         srand(time(NULL));
         double temp = (RAND_MAX + 1.0);
         for (int i=0; i < size_1d; i++){
-                matrix[i] = rand() / temp - 0.5;
+            matrix[i] = rand() / temp - 0.5;
         }
     }
 
@@ -326,9 +330,29 @@ public:
     Matrix& operator+ (Matrix &_matrix){
         Matrix *result = calculate_check_need_copy();
         double* temp = result->matrix;
-        for (size_t i = 0; i < size_1d; i++){
-            temp[i] += _matrix.matrix[i];
+
+        if (_matrix.shape[0] == 1 && shape[0] == 1 && _matrix.shape[1] == 1 && shape[1] == 1 &&
+                _matrix.shape[3] == shape[3]){
+
+            cout << size_1d << endl;
+            for (size_t i = 0; i < size_1d; i += shape[3]){
+                for (size_t j = 0; j < shape[3]; j++) {
+                    temp[i + j] += _matrix.matrix[j];
+                }
+            }
+
+        }else{
+            assert(_matrix.shape[0] == this->shape[0]);
+            assert(_matrix.shape[1] == this->shape[1]);
+            assert(_matrix.shape[2] == this->shape[2]);
+            assert(_matrix.shape[3] == this->shape[3]);
+
+            for (size_t i = 0; i < size_1d; i++){
+                temp[i] += _matrix.matrix[i];
+            }
         }
+
+
         return *result;
     }
 
@@ -344,8 +368,26 @@ public:
     Matrix& operator- (Matrix &_matrix){
         Matrix *result = calculate_check_need_copy();
         double* temp = result->matrix;
-        for (size_t i = 0; i < size_1d; i++){
-            temp[i] -= _matrix.matrix[i];
+
+        if (_matrix.shape[0] == 1 && shape[0] == 1 && _matrix.shape[1] == 1 && shape[1] == 1 &&
+            _matrix.shape[3] == shape[3]){
+
+            cout << size_1d << endl;
+            for (size_t i = 0; i < size_1d; i += shape[3]){
+                for (size_t j = 0; j < shape[3]; j++) {
+                    temp[i + j] -= _matrix.matrix[j];
+                }
+            }
+
+        }else{
+            assert(_matrix.shape[0] == this->shape[0]);
+            assert(_matrix.shape[1] == this->shape[1]);
+            assert(_matrix.shape[2] == this->shape[2]);
+            assert(_matrix.shape[3] == this->shape[3]);
+
+            for (size_t i = 0; i < size_1d; i++){
+                temp[i] -= _matrix.matrix[i];
+            }
         }
         return *result;
     }
@@ -362,8 +404,25 @@ public:
     Matrix& operator* (Matrix &_matrix){
         Matrix *result = calculate_check_need_copy();
         double* temp = result->matrix;
-        for (size_t i = 0; i < size_1d; i++){
-            temp[i] *= _matrix.matrix[i];
+        if (_matrix.shape[0] == 1 && shape[0] == 1 && _matrix.shape[1] == 1 && shape[1] == 1 &&
+            _matrix.shape[3] == shape[3]){
+
+            cout << size_1d << endl;
+            for (size_t i = 0; i < size_1d; i += shape[3]){
+                for (size_t j = 0; j < shape[3]; j++) {
+                    temp[i + j] *= _matrix.matrix[j];
+                }
+            }
+
+        }else{
+            assert(_matrix.shape[0] == this->shape[0]);
+            assert(_matrix.shape[1] == this->shape[1]);
+            assert(_matrix.shape[2] == this->shape[2]);
+            assert(_matrix.shape[3] == this->shape[3]);
+
+            for (size_t i = 0; i < size_1d; i++){
+                temp[i] *= _matrix.matrix[i];
+            }
         }
         return *result;
     }
@@ -380,8 +439,25 @@ public:
     Matrix& operator/ (Matrix &_matrix){
         Matrix *result = calculate_check_need_copy();
         double* temp = result->matrix;
-        for (size_t i = 0; i < size_1d; i++){
-            temp[i] /= _matrix.matrix[i];
+        if (_matrix.shape[0] == 1 && shape[0] == 1 && _matrix.shape[1] == 1 && shape[1] == 1 &&
+            _matrix.shape[3] == shape[3]){
+
+            cout << size_1d << endl;
+            for (size_t i = 0; i < size_1d; i += shape[3]){
+                for (size_t j = 0; j < shape[3]; j++) {
+                    temp[i + j] /= _matrix.matrix[j];
+                }
+            }
+
+        }else{
+            assert(_matrix.shape[0] == this->shape[0]);
+            assert(_matrix.shape[1] == this->shape[1]);
+            assert(_matrix.shape[2] == this->shape[2]);
+            assert(_matrix.shape[3] == this->shape[3]);
+
+            for (size_t i = 0; i < size_1d; i++){
+                temp[i] /= _matrix.matrix[i];
+            }
         }
         return *result;
     }
@@ -418,6 +494,12 @@ void f_b(){
 
 
 int main(){
-    f_b();
+    Matrix a(1, 5, 3);
+    Matrix b(3, 5, 2);
+    b = b + a;
+    b.print_matrix();
+//    a.set_matrix_1_to_x();
+//    a.transpose();
+//    a.print_matrix();
     return 0;
 }
