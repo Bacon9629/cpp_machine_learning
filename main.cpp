@@ -345,6 +345,112 @@ public:
     }
 };
 
+class ConvLayer: public Layer{
+public:
+    size_t kernel_size, filter_size;
+    ActiveFunc *activeFunc;
+    Optimizer *optimizer;
+
+    /***
+     * 捲積
+     * @param img shape = (img_account, img_row, img_col, img_channel)
+     * @param filter shape = (filter_size, kernel_row, kernel_col, kernel_channel)，kernel size 必須要是奇數，filter 必須是正方形
+     * @return feature_img, shape = (img_account, img_row, img_col, img_channel)
+     */
+    static Matrix &convolution(Matrix &img, Matrix &filter){
+        assert(filter.shape[1] == filter.shape[2]);  // filter 必須是正方形
+        assert(filter.shape[1] % 2);  // kernel size 必須要是奇數
+        assert(filter.shape[3] == img.shape[3]);  // filter 與 img 的 channel 要一樣
+
+        size_t channel_size = img.shape[3];
+        size_t filter_size = filter.shape[0];
+        size_t kernel_width = filter.shape[1];
+        size_t temp_a = kernel_width - 1;  // 因為kernel size關係，img必須從temp_a個像素點開始做捲積計算
+        Matrix *result = new Matrix(img.shape[0], img.shape[1] - kernel_width, img.shape[2] - kernel_width, filter.shape[1], 0, true);
+        size_t kernel_area_size = kernel_width * kernel_width;
+        int kernel_reflect_pos_idx[kernel_area_size];  // filter中每一個kernel對應到圖片上需要加減多少個點
+        size_t temp_b = result->shape[1] * result->shape[2];  // 一張img有幾個像素點需要被捲積計算
+
+        // 一張圖片對一個捲積核做計算
+        double *img_target_ptr;  // 現在的目標像素點是哪個
+        double *filter_ptr;  // 現在要做卷積的filter是哪個
+        double temp = 0;
+        for (size_t i = 0; i < kernel_area_size; i++){
+//            result->matrix[i] =
+            double *pixel_a = img_target_ptr - kernel_reflect_pos_idx[0];  // 目標像素點對映到捲積計算時要與kernel相乘的像素點位置
+            double *kernel_a =  filter_ptr + i * channel_size;
+            for (size_t j = 0; j < channel_size; j++){
+                temp += pixel_a[j] * kernel_a[j];
+            }
+//            result->matrix[] = temp;  // 把「一個捲積核」的計算結果存進result matrix
+
+        }
+
+
+
+
+//        for (size_t img_count = 0; img_count < img.shape[0]; img_count++){
+//            // 迭代每一張圖片
+//
+//            double *img_ptr = &(img.get(img_count, 0, 0, 0));
+//
+//            for(size_t result_pixel_count = 0; result_pixel_count < temp_b; result_pixel_count++){
+//                // 迭代每一個filter，
+//
+//                for(size_t filter_count = 0; filter_count < filter_size; filter_count++){
+//                    // 迭代每一個channel
+//
+//                    for (size_t channel_count = 0; channel_count < kernel_area_size; channel_count++){
+//                        // 把一個filter的每個channel乘上對應像素點
+//
+//                        for (size_t img_channel_count = 0; img_channel_count < img.shape[3]; img_channel_count++){
+//
+//
+//
+//                        }
+//
+//                    }
+//
+//
+//                }
+//
+//            }
+//
+//
+//        }
+
+        return *result;
+    }
+
+    ConvLayer(size_t _kernel_size, size_t _filter_size, ActiveFunc *_activeFunc, Optimizer *_optimizer){
+        kernel_size = _kernel_size;
+        filter_size = _filter_size;
+        activeFunc = _activeFunc;
+        optimizer = _optimizer;
+        w = *(new Matrix(_filter_size, _kernel_size * _kernel_size, 0));
+        b = *(new Matrix(1, _filter_size, 0));
+        w.random_matrix();
+        b.random_matrix();
+        grad_w = *(new Matrix(w.shape[2], w.shape[3], 0));
+        grad_b = *(new Matrix(b.shape[2], b.shape[3], 0));
+    }
+
+
+    Matrix &forward(Matrix &_x, bool is_train) override {
+//        return <#initializer#>;
+    }
+
+    Matrix &backward(Matrix &_delta, bool is_train) override {
+//        return <#initializer#>;
+    }
+
+    void update() override {
+
+    }
+
+
+};
+
 class DenseLayer : public Layer{
 public:
 

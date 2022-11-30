@@ -282,6 +282,26 @@ public:
         return *result;
     }
 
+    /***
+     * 把自己跟filter捲機
+     * @param filter 要捲機的filter的第一個kernel位址
+     * @param filter_size filter的數量
+     * @param kernel_size 一個filter的kernel的寬(前提是長寬要一樣)
+     * @return feature map
+     */
+    Matrix& conv(const double *filters, size_t filter_size, size_t kernel_size){
+        Matrix *result = new Matrix(shape[0], shape[1], shape[2], filter_size, 0, true);
+
+        for(size_t filter_count = 0; filter_count < filter_size; filter_count++){  // 把每一個filter拿出來捲一次，然後把植存進reuslt內
+
+
+
+
+        }
+
+        return *result;
+    }
+
     void transpose(){
         *this = Matrix::transpose(*this);
     }
