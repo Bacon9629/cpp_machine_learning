@@ -319,22 +319,39 @@ public:
     }
 
     inline void print_matrix(){
-        cout << "{" << endl;
-        for (int k=0;k<shape[0];k++){
+//        print_shape();
+        if (shape[0] != 1 || shape[1] != 1){
             cout << "{" << endl;
-            for (int l=0;l<shape[1];l++){
-                for (int i=0;i<shape[2];i++){
-                    for (int j=0;j<shape[3];j++){
-                        cout << get(k, l, i, j) << ", ";
+            for (int k=0;k<shape[0];k++){
+                cout << "  {" << endl;
+                for (int l=0;l<shape[1];l++){
+                    cout << "    ";
+                    for (int i=0; i < shape[2]; i++) {
+                        cout << "{ ";
+                        for (int j=0; j < shape[3]; j++) {
+                            cout << get(k, l, i, j) << ", ";
+                        }
+                        cout << "}, ";
                     }
                     cout << endl;
                 }
+                cout << "  }, " << endl;
+            }
+            cout << "}" << endl;
+
+        }else{
+            cout << "{" << endl ;
+            for ( size_t row = 0; row < shape[2]; row++){
+                cout << "  ";
+                for (size_t col = 0; col < shape[2]; col++) {
+                    cout << get(row, col) << ", ";
+                }
                 cout << endl;
             }
-            cout << endl;
             cout << "}" << endl;
+
         }
-        cout << "}" << endl;
+
     }
 
     inline void print_shape(){

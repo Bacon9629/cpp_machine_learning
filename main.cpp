@@ -365,59 +365,68 @@ public:
         size_t channel_size = img.shape[3];
         size_t filter_size = filter.shape[0];
         size_t kernel_width = filter.shape[1];
-        size_t temp_a = kernel_width - 1;  // 因為kernel size關係，img必須從temp_a個像素點開始做捲積計算
-        Matrix *result = new Matrix(img.shape[0], img.shape[1] - kernel_width, img.shape[2] - kernel_width, filter.shape[1], 0, true);
+        size_t temp_a = (kernel_width - 1) / 2;  // 因為kernel size關係，img必須從temp_a個像素點開始做捲積計算
+        Matrix *result = new Matrix(img.shape[0], img.shape[1] - kernel_width + 1, img.shape[2] - kernel_width + 1, filter.shape[0], 0, true);
         size_t kernel_area_size = kernel_width * kernel_width;
-        int kernel_reflect_pos_idx[kernel_area_size];  // filter中每一個kernel對應到圖片上需要加減多少個點
-        size_t temp_b = result->shape[1] * result->shape[2];  // 一張img有幾個像素點需要被捲積計算
+        int kernel_reflect_img_pos_idx[kernel_area_size];  // filter中每一個kernel對應到圖片上需要加減多少個點
+//        size_t temp_b = result->shape[1] * result->shape[2];  // 一張img有幾個像素點需要被捲積計算
 
-        // 一張圖片對一個捲積核做計算
-        double *img_target_ptr;  // 現在的目標像素點是哪個
-        double *filter_ptr;  // 現在要做卷積的filter是哪個
-        double temp = 0;
-        for (size_t i = 0; i < kernel_area_size; i++){
-//            result->matrix[i] =
-            double *pixel_a = img_target_ptr - kernel_reflect_pos_idx[0];  // 目標像素點對映到捲積計算時要與kernel相乘的像素點位置
-            double *kernel_a =  filter_ptr + i * channel_size;
-            for (size_t j = 0; j < channel_size; j++){
-                temp += pixel_a[j] * kernel_a[j];
+
+        // 建立kernel_reflect_img_pos_idx
+        size_t center_idx = (kernel_area_size - 1) / 2;
+        size_t temp_c = (kernel_width - 1) / 2;
+        int temp_d = int(img.shape[2]) * int(channel_size);
+        kernel_reflect_img_pos_idx[center_idx] = 0;
+
+        for (int col = 1; col <= temp_c; col++){  // 中間排完成
+            kernel_reflect_img_pos_idx[center_idx + col] = int(channel_size) * col;
+            kernel_reflect_img_pos_idx[center_idx - col] = -(int(channel_size) * col);
+        }
+
+        for (int row = 1; row <= temp_c; row++){
+            size_t temp_center_index_1 = center_idx + row * kernel_width;
+            size_t temp_center_index_2 = center_idx - row * kernel_width;
+            kernel_reflect_img_pos_idx[temp_center_index_1] =   temp_d * row;
+            kernel_reflect_img_pos_idx[temp_center_index_2] = -(temp_d * row);
+            for (int col = 1; col <= temp_c; col++){
+                kernel_reflect_img_pos_idx[temp_center_index_1 + col] = kernel_reflect_img_pos_idx[temp_center_index_1] + int(channel_size) * col;
+                kernel_reflect_img_pos_idx[temp_center_index_1 - col] = kernel_reflect_img_pos_idx[temp_center_index_1] - int(channel_size) * col;
+                kernel_reflect_img_pos_idx[temp_center_index_2 + col] = kernel_reflect_img_pos_idx[temp_center_index_2] +(int(channel_size) * col);
+                kernel_reflect_img_pos_idx[temp_center_index_2 - col] = kernel_reflect_img_pos_idx[temp_center_index_2] -(int(channel_size) * col);
             }
-//            result->matrix[] = temp;  // 把「一個捲積核」的計算結果存進result matrix
-
         }
 
 
+        // 捲積
+        for (size_t k = 0; k < img.shape[0]; k++){  // 對一張圖片
+
+            for (size_t j = 0; j < filter_size; j++){  // 一張圖片對一個filter
+
+                for (size_t result_row = 0, img_row = temp_a; result_row < result->shape[1]; result_row++, img_row++){
+
+                    for (size_t result_col = 0, img_col = temp_a; result_col < result->shape[2]; result_col++, img_col++) {  // 一個filter對一張圖片中的一個像素點做捲機計算
+
+                        // 對原始照片的一個像素點做卷積運算後存入result
+                        double *filter_ptr = &(filter.get(j, 0, 0, 0));  // 現在要做卷積的filter是哪個
+                        double *img_target_ptr = &(img.get(k, img_row, img_col, 0));  // 現在的目標像素點是哪個
+                        double temp = 0;
+                        for (size_t i = 0; i < kernel_area_size; i++){
+
+                            double *pixel_a = img_target_ptr + kernel_reflect_img_pos_idx[i];  // 目標像素點對映到捲積計算時要與kernel相乘的像素點位置
+                            double *kernel_a =  filter_ptr + i * channel_size;
+                            for (size_t z = 0; z < channel_size; z++){
+                                temp += pixel_a[z] * kernel_a[z];
+                            }
+
+                        }
+                        result->get(k, result_row, result_col, j) = temp;  // 把「一個捲積核」的計算結果存進result matrix
+
+                    }
+                }
+            }
+        }
 
 
-//        for (size_t img_count = 0; img_count < img.shape[0]; img_count++){
-//            // 迭代每一張圖片
-//
-//            double *img_ptr = &(img.get(img_count, 0, 0, 0));
-//
-//            for(size_t result_pixel_count = 0; result_pixel_count < temp_b; result_pixel_count++){
-//                // 迭代每一個filter，
-//
-//                for(size_t filter_count = 0; filter_count < filter_size; filter_count++){
-//                    // 迭代每一個channel
-//
-//                    for (size_t channel_count = 0; channel_count < kernel_area_size; channel_count++){
-//                        // 把一個filter的每個channel乘上對應像素點
-//
-//                        for (size_t img_channel_count = 0; img_channel_count < img.shape[3]; img_channel_count++){
-//
-//
-//
-//                        }
-//
-//                    }
-//
-//
-//                }
-//
-//            }
-//
-//
-//        }
 
         return *result;
     }
@@ -437,10 +446,14 @@ public:
 
 
     Matrix &forward(Matrix &_x, bool is_train) override {
+        Matrix *result = new Matrix(true);
+        return *result;
 //        return <#initializer#>;
     }
 
     Matrix &backward(Matrix &_delta, bool is_train) override {
+        Matrix *result = new Matrix(true);
+        return *result;
 //        return <#initializer#>;
     }
 
@@ -756,8 +769,31 @@ void type_a_train(){
 
 }
 
+void test_conv(){
+    double _img[50] = {
+            2, 1, 0, 3, 1, 2, 1, 0, 0, 1,
+            0, 1, 0, 3, 1, 2, 1, 0, 2, 1,
+            0, 1, 1, 3, 0, 2, 1, 0, 0, 1,
+            2, 1, 0, 3, 2, 2, 1, 0, 0, 1,
+            2, 1, 1, 3, 1, 2, 1, 0, 0, 1
+    };
+    double _filter[18] = {0.1, 0.2, 0.2, 0.1, 0.3, 0.2,
+                        0.3, 0.2, 0.5, 0.3, 0.7, 0.1,
+                        0.7, 0.2, 0.8, 0.3, 0.9, 0.2};
+
+    Matrix img(_img, 1, 5, 5, 2);
+    Matrix filter(_filter, 1, 3, 3, 2);
+
+    ConvLayer::convolution(img, filter).print_matrix();
+
+    img.print_matrix();
+    filter.print_matrix();
+
+}
+
 int main() {
 //    type_a_train();
-    img_train();
+//    img_train();
+    test_conv();
     return 0;
 }
