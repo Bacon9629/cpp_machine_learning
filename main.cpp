@@ -4,9 +4,11 @@
 #include <cmath>
 #include <cassert>
 #include <vector>
-#include "Matrix.h"
 
 using namespace std;
+
+
+#include "Matrix.h"
 
 // loss function - start
 
@@ -368,7 +370,8 @@ public:
         size_t temp_a = (kernel_width - 1) / 2;  // 因為kernel size關係，img必須從temp_a個像素點開始做捲積計算
         Matrix *result = new Matrix(img.shape[0], img.shape[1] - kernel_width + 1, img.shape[2] - kernel_width + 1, filter.shape[0], 0, true);
         size_t kernel_area_size = kernel_width * kernel_width;
-        int kernel_reflect_img_pos_idx[kernel_area_size];  // filter中每一個kernel對應到圖片上需要加減多少個點
+        int *kernel_reflect_img_pos_idx = new int[kernel_area_size];  // filter中每一個kernel對應到圖片上需要加減多少個點
+//        int kernel_reflect_img_pos_idx[kernel_area_size];  // filter中每一個kernel對應到圖片上需要加減多少個點
 //        size_t temp_b = result->shape[1] * result->shape[2];  // 一張img有幾個像素點需要被捲積計算
 
 
@@ -422,42 +425,12 @@ public:
                         result->get(k, result_row, result_col, j) = temp;  // 把「一個捲積核」的計算結果存進result matrix
                         img_target_ptr += channel_size;
                     }
-                    img_target_ptr += (temp_a * 2) * channel_size;
+                    img_target_ptr += (temp_a * 2) * channel_size;  // 因為要跳過不會被跑到的pixel
                 }
             }
         }
 
-//        // 捲積
-//        for (size_t k = 0; k < img.shape[0]; k++){  // 對一張圖片
-//
-//            for (size_t j = 0; j < filter_size; j++){  // 一張圖片對一個filter
-//
-//                for (size_t result_row = 0, img_row = temp_a; result_row < result->shape[1]; result_row++, img_row++){
-//
-//                    for (size_t result_col = 0, img_col = temp_a; result_col < result->shape[2]; result_col++, img_col++) {  // 一個filter對一張圖片中的一個像素點做捲機計算
-//
-//                        // 對原始照片的一個像素點做卷積運算後存入result
-//                        double *filter_ptr = &(filter.get(j, 0, 0, 0));  // 現在要做卷積的filter是哪個
-//                        double *img_target_ptr = &(img.get(k, img_row, img_col, 0));  // 現在的目標像素點是哪個
-//                        double temp = 0;
-//                        for (size_t i = 0; i < kernel_area_size; i++){
-//
-//                            double *pixel_a = img_target_ptr + kernel_reflect_img_pos_idx[i];  // 目標像素點對映到捲積計算時要與kernel相乘的像素點位置
-//                            double *kernel_a =  filter_ptr + i * channel_size;
-//                            for (size_t z = 0; z < channel_size; z++){
-//                                temp += pixel_a[z] * kernel_a[z];
-//                            }
-//
-//                        }
-//                        result->get(k, result_row, result_col, j) = temp;  // 把「一個捲積核」的計算結果存進result matrix
-//
-//                    }
-//                }
-//            }
-//        }
-
-
-
+        delete []kernel_reflect_img_pos_idx;
         return *result;
     }
 
