@@ -519,10 +519,13 @@ public:
 
     Matrix &convolution_back_get_per_picture_d_w(size_t which_picture){
         Matrix *result = new Matrix(w.shape, 0, true);
-        Matrix target_u = Matrix::getPictures(u, which_picture, which_picture+1);
         Matrix target_x = Matrix::getPictures(x, which_picture, which_picture+1);
+        Matrix target_u = Matrix::getPictures(u, which_picture, which_picture+1);
 
+        Matrix u_change(w.shape, 0);
+        u_change = target_u.per_picture_change_shape_3_to_0(w.shape[3]);
 
+        *result = ConvLayer::convolution(target_x, u_change);
 
         return *result;
     }
@@ -535,7 +538,7 @@ public:
 //        w = *(new Matrix(_filter_size, _kernel_size, _kernel_size, chanel_size, 0));
         b = *(new Matrix(1, _filter_size, 0, true));
 //        w.random_matrix();
-        b.random_matrix();
+//        b.random_matrix();
 //        grad_w = *(new Matrix(w.shape[2], w.shape[3], 0));
         grad_b = *(new Matrix(b.shape[2], b.shape[3], 0, true));
     }
@@ -556,6 +559,18 @@ public:
 
     Matrix &backward(Matrix &_delta, bool is_train) override {
         Matrix *result = new Matrix(true);
+
+        Matrix my_delta = active_func->func_backward(u) * _delta;
+        Matrix u_delta = my_delta * u;
+
+        for(size_t i = 0; i < x.shape[0]; i++){
+            Matrix w_change_i = convolution_back_get_per_picture_d_w(i);
+            Matrix x_i = Matrix::getPictures(x, i, i + 1);
+            grad_w = grad_w + ConvLayer::convolution(x_i, w_change_i);
+        }
+
+        grad_w = grad_w / double(x.shape[0]);
+
         return *result;
     }
 
@@ -564,6 +579,29 @@ public:
     }
 
 
+};
+
+class FlattenLayer: public Layer{
+public:
+    size_t input_shape[4] = {0, 0, 0, 0};
+    Matrix &forward(Matrix &_x, bool is_train) override {
+        Matrix *result = new Matrix();
+        *result = *(_x.copy());
+        input_shape[0] = 1;
+        input_shape[1] = 1;
+        input_shape[2] = _x.shape[0];
+        input_shape[3] = _x.size_1d * _x.shape[0];
+        result->reshape(1, 1, _x.shape[0], _x.size_1d * _x.shape[0]);
+        return *result;
+    }
+
+    Matrix &backward(Matrix &_delta, bool is_train) override {
+        return ;
+    }
+
+    void update() override {
+
+    }
 };
 
 class DenseLayer : public Layer{
@@ -612,7 +650,9 @@ public:
 
         Matrix x_t = Matrix::transpose(x);
         grad_w = Matrix::dot(x_t, my_delta);
+        grad_w = grad_w / double(x.shape[2]);
         grad_b = _delta.row_sum();
+        grad_b = grad_b / double(x.shape[2]);
 
         Matrix w_t = Matrix::transpose(w);
         delta = Matrix::dot(my_delta, w_t);
@@ -885,14 +925,10 @@ void test_conv(){
     Matrix filter(_filter, 2, 3, 3, 1);
     Matrix u;
 
-    img.print_matrix();
-    filter.print_matrix();
-    u = ConvLayer::convolution(img, filter);
-    u.print_matrix();
+    MyFrame frame(new MSE, -1);
+    frame.add(new ConvLayer(1, 3, new Sigmoid(), new SGD(0.3)));
 
-    Matrix d_w;
-    d_w = ConvLayer::convolution(img, u);
-    d_w.print_matrix();
+    frame.train_one_time(_img)
 
 //    img.print_matrix();
 //    filter.print_matrix();

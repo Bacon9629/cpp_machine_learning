@@ -257,26 +257,27 @@ public:
         return *result;
     }
 
-//    Matrix &change_shape_3_to_0(size_t which_picture, size_t channel_size){
-//        Matrix *result = new Matrix(shape[3], shape[1], shape[2], channel_size, 0, true);
-//        Matrix temp;
-//        temp = getPictures(*this, which_picture, which_picture + 1);
-//
-//        for(size_t j = 0; j < shape[3]; j++){
-//            for(size_t i = 0; i < size_1d; i += shape[3]){
-//                for(size_t k = 0; k < channel_size; k++){
-//                    result->matrix[j * index_reflec_1d_[0] + ] = temp.matrix[i + j];
-//
-//                }
-//
-//
-//
-//            }
-//
-//        }
-//
-//        return *result;
-//    }
+    /***
+     * 將一張照片的shape[3]轉成shape[0]，給de_conv計算用
+     * shape[0]必須 = 0
+     * @param channel_size 權重or原始照片的channel size
+     * @return 假設原始shape(1, 3, 3, 2)轉換成shape(2, 3, 3, channel_size)
+     */
+    Matrix &per_picture_change_shape_3_to_0(size_t channel_size){
+        assert(shape[0] == 1);
+        Matrix *result = new Matrix(shape[3], shape[1], shape[2], channel_size, 0, true);
+        for (size_t i = 0; i < shape[3]; i++){
+            for (size_t j = 0; j < shape[1]; j++){
+                for (size_t k = 0; k < shape[2]; k++){
+                    double a = get(0, j, k, i);
+                    for (size_t l = 0; l < shape[2]; l++){
+                        result->get(i, j, k, l) = a;
+                    }
+                }
+            }
+        }
+        return *result;
+    }
 
     void transpose(){
         *this = Matrix::transpose(*this);
