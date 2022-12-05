@@ -263,8 +263,8 @@ public:
 //        last_grad_w =  alpha * grad_w + beta * last_grad_w;
 //        w -= last_grad_w;
         if (last_grad_w.shape[2] == 0){
-            last_grad_w = *(new Matrix(grad_w.shape[2], grad_w.shape[3], 0));
-            last_grad_b = *(new Matrix(grad_b.shape[2], grad_b.shape[3], 0));
+            last_grad_w = *(new Matrix(grad_w.shape[2], grad_w.shape[3], 0, true));
+            last_grad_b = *(new Matrix(grad_b.shape[2], grad_b.shape[3], 0, true));
         }
 
         last_grad_w = (grad_w * eta) + (last_grad_w * beta);
@@ -350,8 +350,6 @@ public:
 class ConvLayer: public Layer{
 public:
     size_t kernel_size, filter_size;
-    ActiveFunc *activeFunc;
-    Optimizer *optimizer;
 
     /***
      * 捲積
@@ -434,30 +432,133 @@ public:
         return *result;
     }
 
-    ConvLayer(size_t _kernel_size, size_t _filter_size, ActiveFunc *_activeFunc, Optimizer *_optimizer){
+
+    /***
+     * 捲積
+     * @param img shape = (img_account, img_row, img_col, img_channel)
+     * @param filter shape = (filter_size, kernel_row, kernel_col, kernel_channel)，kernel size 必須要是奇數，filter 必須是正方形，kernel_channel與img_channel相同
+     * @param bias shape = (1, 1, 1, filter_size)
+     * @return feature_img, shape = (img_account, img_row, img_col, img_channel)
+     */
+    static Matrix &convolution(Matrix &img, Matrix &filter, Matrix &bias){
+        assert(filter.shape[1] == filter.shape[2]);  // filter 必須是正方形
+        assert(filter.shape[1] % 2);  // kernel size 必須要是奇數
+        assert(filter.shape[3] == img.shape[3]);  // filter 與 img 的 channel 要一樣
+        assert(filter.shape[0] == bias.shape[3]);
+
+        size_t channel_size = img.shape[3];
+        size_t filter_size = filter.shape[0];
+        size_t kernel_width = filter.shape[1];
+        size_t temp_a = (kernel_width - 1) / 2;  // 因為kernel size關係，img必須從temp_a個像素點開始做捲積計算
+        Matrix *result = new Matrix(img.shape[0], img.shape[1] - kernel_width + 1, img.shape[2] - kernel_width + 1, filter.shape[0], 0, true);
+        size_t kernel_area_size = kernel_width * kernel_width;
+        int *kernel_reflect_img_pos_idx = new int[kernel_area_size];  // filter中每一個kernel對應到圖片上需要加減多少個點
+//        int kernel_reflect_img_pos_idx[kernel_area_size];  // filter中每一個kernel對應到圖片上需要加減多少個點
+//        size_t temp_b = result->shape[1] * result->shape[2];  // 一張img有幾個像素點需要被捲積計算
+
+
+        // 建立kernel_reflect_img_pos_idx
+        size_t center_idx = (kernel_area_size - 1) / 2;
+        size_t temp_c = (kernel_width - 1) / 2;
+        int temp_d = int(img.shape[2]) * int(channel_size);
+        kernel_reflect_img_pos_idx[center_idx] = 0;
+
+        for (int col = 1; col <= temp_c; col++){  // 中間排完成
+            kernel_reflect_img_pos_idx[center_idx + col] = int(channel_size) * col;
+            kernel_reflect_img_pos_idx[center_idx - col] = -(int(channel_size) * col);
+        }
+
+        for (int row = 1; row <= temp_c; row++){
+            size_t temp_center_index_1 = center_idx + row * kernel_width;
+            size_t temp_center_index_2 = center_idx - row * kernel_width;
+            kernel_reflect_img_pos_idx[temp_center_index_1] =   temp_d * row;
+            kernel_reflect_img_pos_idx[temp_center_index_2] = -(temp_d * row);
+            for (int col = 1; col <= temp_c; col++){
+                kernel_reflect_img_pos_idx[temp_center_index_1 + col] = kernel_reflect_img_pos_idx[temp_center_index_1] + int(channel_size) * col;
+                kernel_reflect_img_pos_idx[temp_center_index_1 - col] = kernel_reflect_img_pos_idx[temp_center_index_1] - int(channel_size) * col;
+                kernel_reflect_img_pos_idx[temp_center_index_2 + col] = kernel_reflect_img_pos_idx[temp_center_index_2] +(int(channel_size) * col);
+                kernel_reflect_img_pos_idx[temp_center_index_2 - col] = kernel_reflect_img_pos_idx[temp_center_index_2] -(int(channel_size) * col);
+            }
+        }
+
+
+        // 捲積
+        for (size_t k = 0; k < img.shape[0]; k++){  // 對一張圖片
+
+            for (size_t j = 0; j < filter_size; j++){  // 一張圖片對一個filter
+                double *img_target_ptr = &(img.get(k, temp_a, temp_a, 0));  // 現在的目標像素點是哪個
+
+                for (size_t result_row = 0, img_row = temp_a; result_row < result->shape[1]; result_row++){
+
+                    for (size_t result_col = 0, img_col = temp_a; result_col < result->shape[2]; result_col++) {  // 一個filter對一張圖片中的一個像素點做捲機計算
+
+                        // 對原始照片的一個像素點做卷積運算後存入result
+                        double *filter_ptr = &(filter.get(j, 0, 0, 0));  // 現在要做卷積的filter是哪個
+                        double temp = 0;
+                        for (size_t i = 0; i < kernel_area_size; i++){
+
+                            double *pixel_a = img_target_ptr + kernel_reflect_img_pos_idx[i];  // 目標像素點對映到捲積計算時要與kernel相乘的像素點位置
+                            double *kernel_a =  filter_ptr + i * channel_size;
+                            for (size_t z = 0; z < channel_size; z++){
+                                temp += pixel_a[z] * kernel_a[z];
+                            }
+
+                        }
+                        temp += bias.matrix[j];
+                        result->get(k, result_row, result_col, j) = temp;  // 把「一個捲積核」的計算結果存進result matrix
+                        img_target_ptr += channel_size;
+                    }
+                    img_target_ptr += (temp_a * 2) * channel_size;  // 因為要跳過不會被跑到的pixel
+                }
+            }
+        }
+
+        delete []kernel_reflect_img_pos_idx;
+        return *result;
+    }
+
+    /***
+     * 捲積
+     * @param img shape = (img_account, img_row, img_col, img_channel)
+     * @param filter shape = (filter_size, kernel_row, kernel_col, kernel_channel)，kernel size 必須要是奇數，filter 必須是正方形，kernel_channel與img_channel相同
+     * @return weight gradiant, shape = (filter_size, kernel_row, kernel_col, kernel_channel)
+     */
+    Matrix &convolution_back(Matrix &input, Matrix &u){
+        assert(w.size_1d != -1);
+        Matrix *result = new Matrix(w.shape[0], w.shape[1], w.shape[2], w.shape[3], );
+        return *result;
+    }
+
+    ConvLayer(size_t _filter_size, size_t _kernel_size, ActiveFunc *_activeFunc, Optimizer *_optimizer){
         kernel_size = _kernel_size;
         filter_size = _filter_size;
-        activeFunc = _activeFunc;
+        active_func = _activeFunc;
         optimizer = _optimizer;
-        w = *(new Matrix(_filter_size, _kernel_size * _kernel_size, 0));
-        b = *(new Matrix(1, _filter_size, 0));
-        w.random_matrix();
+//        w = *(new Matrix(_filter_size, _kernel_size, _kernel_size, chanel_size, 0));
+        b = *(new Matrix(1, _filter_size, 0, true));
+//        w.random_matrix();
         b.random_matrix();
-        grad_w = *(new Matrix(w.shape[2], w.shape[3], 0));
-        grad_b = *(new Matrix(b.shape[2], b.shape[3], 0));
+//        grad_w = *(new Matrix(w.shape[2], w.shape[3], 0));
+        grad_b = *(new Matrix(b.shape[2], b.shape[3], 0, true));
     }
 
 
     Matrix &forward(Matrix &_x, bool is_train) override {
-        Matrix *result = new Matrix(true);
-        return *result;
-//        return <#initializer#>;
+        if (w.size_1d == -1){
+            w = *(new Matrix(filter_size, kernel_size, kernel_size, _x.shape[3], 0, true));
+            w.random_matrix();
+            grad_w = *(new Matrix(filter_size, kernel_size, kernel_size, _x.shape[3], 0, true));
+        }
+
+        u = ConvLayer::convolution(_x, w, b);
+        y = active_func->func_forward(u);
+
+        return y;
     }
 
     Matrix &backward(Matrix &_delta, bool is_train) override {
         Matrix *result = new Matrix(true);
         return *result;
-//        return <#initializer#>;
     }
 
     void update() override {
@@ -487,12 +588,12 @@ public:
     }
 
     void init(size_t input_size, size_t output_size, ActiveFunc *_activeFunc, Optimizer *_optimizer){
-        w = *(new Matrix(input_size, output_size, 0));
+        w = *(new Matrix(input_size, output_size, 0, true));
         w.random_matrix();
-        b = *(new Matrix(1, output_size, 0));
+        b = *(new Matrix(1, output_size, 0, true));
         b.random_matrix();
-        grad_w = *(new Matrix(w.shape[2], w.shape[3], 0));
-        grad_b = *(new Matrix(b.shape[2], b.shape[3], 0));
+        grad_w = *(new Matrix(w.shape[2], w.shape[3], 0, true));
+        grad_b = *(new Matrix(b.shape[2], b.shape[3], 0, true));
         active_func = _activeFunc;
         optimizer = _optimizer;
     }
@@ -717,10 +818,10 @@ void img_train(){
 //    vector<vector<double>> temp_x = {{0, 0, 1}, {0, 1, 1}, {1, 0, 1}, {1, 1, 1}};
 //    vector<vector<double>> temp_target = {{0}, {1}, {1}, {0}};
     // data init
-    Matrix x = *(new Matrix(temp_x[0], 5, 5, 5, 1));
-    Matrix x_target = *(new Matrix(temp_target[0], 1, 1, 5, 5));
-    Matrix validation = *(new Matrix(temp_validation[0], 5, 5, 5, 1));
-    Matrix validation_target = *(new Matrix(temp_validation_target[0], 1, 1, 5, 5));
+    Matrix x = *(new Matrix(temp_x[0], 5, 5, 5, 1, true));
+    Matrix x_target = *(new Matrix(temp_target[0], 1, 1, 5, 5, true));
+    Matrix validation = *(new Matrix(temp_validation[0], 5, 5, 5, 1, true));
+    Matrix validation_target = *(new Matrix(temp_validation_target[0], 1, 1, 5, 5, true));
 
     x.reshape(1, 1, 5, 25);
     x_target.reshape(1, 1, 5, 5);
@@ -773,23 +874,29 @@ void type_a_train(){
 }
 
 void test_conv(){
-    double _img[50] = {
+    double _img[25] = {
             2, 1, 0, 3, 1, 2, 1, 0, 0, 1,
             0, 1, 0, 3, 1, 2, 1, 0, 2, 1,
-            0, 1, 1, 3, 0, 2, 1, 0, 0, 1,
-            2, 1, 0, 3, 2, 2, 1, 0, 0, 1,
-            2, 1, 1, 3, 1, 2, 1, 0, 0, 1
+            0, 1, 1, 3, 0
     };
     double _filter[18] = {0.1, 0.2, 0.2, 0.1, 0.3, 0.2,
                         0.3, 0.2, 0.5, 0.3, 0.7, 0.1,
                         0.7, 0.2, 0.8, 0.3, 0.9, 0.2};
 
-    Matrix img(_img, 1, 5, 5, 2);
-    Matrix filter(_filter, 1, 3, 3, 2);
-
-    ConvLayer::convolution(img, filter).print_matrix();
+    Matrix img(_img, 1, 5, 5, 1);
+    Matrix filter(_filter, 2, 3, 3, 1);
+    Matrix u;
 
     img.print_matrix();
+    filter.print_matrix();
+    u = ConvLayer::convolution(img, filter);
+    u.print_matrix();
+
+    Matrix d_w;
+    d_w = ConvLayer::convolution(img, u);
+    d_w.print_matrix();
+
+//    img.print_matrix();
 //    filter.print_matrix();
 
 }
