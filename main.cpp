@@ -517,15 +517,13 @@ public:
         return *result;
     }
 
-    /***
-     * 捲積
-     * @param img shape = (img_account, img_row, img_col, img_channel)
-     * @param filter shape = (filter_size, kernel_row, kernel_col, kernel_channel)，kernel size 必須要是奇數，filter 必須是正方形，kernel_channel與img_channel相同
-     * @return weight gradiant, shape = (filter_size, kernel_row, kernel_col, kernel_channel)
-     */
-    Matrix &convolution_back(Matrix &input, Matrix &u){
-        assert(w.size_1d != -1);
-        Matrix *result = new Matrix(w.shape[0], w.shape[1], w.shape[2], w.shape[3], );
+    Matrix &convolution_back_get_per_picture_d_w(size_t which_picture){
+        Matrix *result = new Matrix(w.shape, 0, true);
+        Matrix target_u = Matrix::getPictures(u, which_picture, which_picture+1);
+        Matrix target_x = Matrix::getPictures(x, which_picture, which_picture+1);
+
+
+
         return *result;
     }
 
@@ -660,15 +658,15 @@ public:
             for (size_t j = 0; data_left_size > 0 ; j++){
                 if (data_left_size < _batch){
                     // 如果資料量"不足"填滿一個batch
-                    Matrix _x = Matrix::getPicture_row(x, j * _batch, j * _batch + data_left_size);
-                    Matrix _target = Matrix::getPicture_row(target, j * _batch, j * _batch + data_left_size);
+                    Matrix _x = Matrix::getPictures(x, j * _batch, j * _batch + data_left_size);
+                    Matrix _target = Matrix::getPictures(target, j * _batch, j * _batch + data_left_size);
 
                     train_one_time(_x, _target);
                     data_left_size = 0;
                 }else{
                     // 如果資料量"足夠"填滿一個batch
-                    Matrix _x = Matrix::getPicture_row(x, j * _batch, j * _batch + _batch);
-                    Matrix _target = Matrix::getPicture_row(target, j * _batch, j * _batch + _batch);
+                    Matrix _x = Matrix::getPictures(x, j * _batch, j * _batch + _batch);
+                    Matrix _target = Matrix::getPictures(target, j * _batch, j * _batch + _batch);
 
                     train_one_time(_x, _target);
                     data_left_size -= _batch;

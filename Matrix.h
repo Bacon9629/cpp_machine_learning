@@ -46,30 +46,8 @@ public:
         return get(_matrix, 0, 0, row, col);
     }
 
-    inline static Matrix& getPicture_row(Matrix &_matrix, size_t start_picture, size_t end_picture){
-        assert(!(start_picture > _matrix.shape[0] || end_picture > _matrix.shape[0] ||
-                 _matrix.shape[0] != 0 || end_picture < start_picture));
-
-        size_t row_size = end_picture - start_picture;
-        Matrix *result = new Matrix(
-                &(Matrix::get(_matrix, start_picture, 0)),
-                row_size,
-                _matrix.shape[2],
-                _matrix.shape[1],
-                _matrix.shape[0], true);
-        return *result;
-    }
-
     // 取 start 到 end - 1 的row
     inline static Matrix& getPictures(Matrix &_matrix, size_t start_picture, size_t end_picture){
-//        if (
-//                start_row > _matrix.shape[2] || end_row > _matrix.shape[2] ||
-//                _matrix.shape[0] != 0 || end_row < start_row
-//                )
-//        {
-//            cout << "shape_wrong: Matrix getRow" << endl;
-//        }
-
         assert(start_picture < _matrix.shape[0]);
         assert(end_picture <= _matrix.shape[0]);
         assert(end_picture > start_picture);
@@ -87,13 +65,6 @@ public:
 
     // 取 start 到 end - 1 的row
     inline static Matrix& getRow(Matrix &_matrix, size_t start_row, size_t end_row){
-//        if (
-//                start_row > _matrix.shape[2] || end_row > _matrix.shape[2] ||
-//                _matrix.shape[0] != 0 || end_row < start_row
-//                )
-//        {
-//            cout << "shape_wrong: Matrix getRow" << endl;
-//        }
         assert(start_row < _matrix.shape[2]);
         assert(end_row <= _matrix.shape[2]);
         assert(end_row > start_row);
@@ -142,6 +113,10 @@ public:
         }
 
         return *result;
+    }
+
+    Matrix(size_t *_shape, double init_val, bool is_calculate = false){
+        init(_shape[0], _shape[1], _shape[2], _shape[3], init_val, is_calculate);
     }
 
     Matrix(Matrix &a, bool is_calculate = false) {
@@ -282,25 +257,26 @@ public:
         return *result;
     }
 
-    /***
-     * 把自己跟filter捲機
-     * @param filter 要捲機的filter的第一個kernel位址
-     * @param filter_size filter的數量
-     * @param kernel_size 一個filter的kernel的寬(前提是長寬要一樣)
-     * @return feature map
-     */
-    Matrix& conv(const double *filters, size_t filter_size, size_t kernel_size){
-        Matrix *result = new Matrix(shape[0], shape[1], shape[2], filter_size, 0, true);
-
-        for(size_t filter_count = 0; filter_count < filter_size; filter_count++){  // 把每一個filter拿出來捲一次，然後把植存進reuslt內
-
-
-
-
-        }
-
-        return *result;
-    }
+//    Matrix &change_shape_3_to_0(size_t which_picture, size_t channel_size){
+//        Matrix *result = new Matrix(shape[3], shape[1], shape[2], channel_size, 0, true);
+//        Matrix temp;
+//        temp = getPictures(*this, which_picture, which_picture + 1);
+//
+//        for(size_t j = 0; j < shape[3]; j++){
+//            for(size_t i = 0; i < size_1d; i += shape[3]){
+//                for(size_t k = 0; k < channel_size; k++){
+//                    result->matrix[j * index_reflec_1d_[0] + ] = temp.matrix[i + j];
+//
+//                }
+//
+//
+//
+//            }
+//
+//        }
+//
+//        return *result;
+//    }
 
     void transpose(){
         *this = Matrix::transpose(*this);
