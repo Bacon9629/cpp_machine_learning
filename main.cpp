@@ -584,23 +584,28 @@ public:
 class FlattenLayer: public Layer{
 public:
     size_t input_shape[4] = {0, 0, 0, 0};
+    size_t output_shape[4] = {0, 0, 0, 0};
     Matrix &forward(Matrix &_x, bool is_train) override {
-        Matrix *result = new Matrix();
-        *result = *(_x.copy());
-        input_shape[0] = 1;
-        input_shape[1] = 1;
-        input_shape[2] = _x.shape[0];
-        input_shape[3] = _x.size_1d * _x.shape[0];
+        Matrix *result = new Matrix(_x, true);
+        input_shape[0] = _x.shape[0];
+        input_shape[1] = _x.shape[1];
+        input_shape[2] = _x.shape[2];
+        input_shape[3] = _x.shape[3];
+        output_shape[0] = 1;
+        output_shape[1] = 1;
+        output_shape[2] = _x.shape[0];
+        output_shape[3] = _x.size_1d * _x.shape[0];
         result->reshape(1, 1, _x.shape[0], _x.size_1d * _x.shape[0]);
         return *result;
     }
 
     Matrix &backward(Matrix &_delta, bool is_train) override {
-        return ;
+        Matrix *result = new Matrix(_delta, true);
+        result->reshape(input_shape[0], input_shape[1], input_shape[2], input_shape[3]);
+        return *result;
     }
 
     void update() override {
-
     }
 };
 
@@ -917,9 +922,11 @@ void test_conv(){
             0, 1, 0, 3, 1, 2, 1, 0, 2, 1,
             0, 1, 1, 3, 0
     };
-    double _filter[18] = {0.1, 0.2, 0.2, 0.1, 0.3, 0.2,
-                        0.3, 0.2, 0.5, 0.3, 0.7, 0.1,
-                        0.7, 0.2, 0.8, 0.3, 0.9, 0.2};
+    double _filter[18] = {
+            0.1, 0.2, 0.2, 0.1, 0.3, 0.2,
+            0.3, 0.2, 0.5, 0.3, 0.7, 0.1,
+            0.7, 0.2, 0.8, 0.3, 0.9, 0.2
+    };
 
     Matrix img(_img, 1, 5, 5, 1);
     Matrix filter(_filter, 2, 3, 3, 1);
@@ -927,8 +934,8 @@ void test_conv(){
 
     MyFrame frame(new MSE, -1);
     frame.add(new ConvLayer(1, 3, new Sigmoid(), new SGD(0.3)));
-
-    frame.train_one_time(_img)
+    frame.add(new FlattenLayer());
+    frame.train_one_time(_img);
 
 //    img.print_matrix();
 //    filter.print_matrix();
