@@ -337,7 +337,7 @@ public:
             cout << "{" << endl ;
             for ( size_t row = 0; row < shape[2]; row++){
                 cout << "  ";
-                for (size_t col = 0; col < shape[2]; col++) {
+                for (size_t col = 0; col < shape[3]; col++) {
                     cout << get(row, col) << ", ";
                 }
                 cout << endl;
