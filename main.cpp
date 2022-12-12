@@ -150,7 +150,7 @@ public:
 class Sigmoid: public ActiveFunc{
 public:
     Matrix& func_forward(Matrix &x) override {
-        Matrix *result = new Matrix(x.shape[2], x.shape[3], 0, true);
+        Matrix *result = new Matrix(x.shape, 0, true);
         double* result_pointer = result->matrix;
         double* x_pointer = x.matrix;
 
@@ -195,17 +195,17 @@ public:
 class Tanh:public ActiveFunc{
 public:
     Matrix& func_forward(Matrix &x) override {
-        Matrix *result = new Matrix(x.shape[2], x.shape[3], 0, true);
+        Matrix *result = new Matrix(true);
         Matrix a = x.exp_();
-        Matrix b = x.exp_() * -1;
+        Matrix b = a * -1;
         *result = (a - b) / (b - a);
         return *result;
     }
 
     Matrix& func_backward(Matrix &x) override {
-        Matrix *result = new Matrix(x.shape[2], x.shape[3], 0, true);
+        Matrix *result = new Matrix(true);
         Matrix a = x.exp_();
-        Matrix b = x.exp_() * -1;
+        Matrix b = a * -1;
         Matrix c = (a - b) / (b - a);
         *result = (c * c - 1) * -1;
         return *result;
@@ -358,6 +358,13 @@ public:
      * @return feature_img, shape = (img_account, img_row, img_col, img_channel)
      */
     static Matrix &convolution(Matrix &img, Matrix &filter){
+
+        if (filter.shape[1] % 2 == 0){
+
+
+            return ;
+        }
+
         assert(filter.shape[1] == filter.shape[2]);  // filter 必須是正方形
         assert(filter.shape[1] % 2);  // kernel size 必須要是奇數
         assert(filter.shape[3] == img.shape[3]);  // filter 與 img 的 channel 要一樣
@@ -432,6 +439,23 @@ public:
         return *result;
     }
 
+    static Matrix &convolution(Matrix &img, Matrix &filter, size_t padding){
+        Matrix padding_matrix(img.shape[0], img.shape[1] + padding * 2, img.shape[2] + padding * 2, img.shape[3], 0);
+
+        for(size_t p = 0; p < img.shape[0]; p++){
+            for (size_t i = 0; i < img.shape[1]; i++){
+                for (size_t j = 0; j < img.shape[2]; j++){
+                    for (size_t k = 0; k < img.shape[3]; k++){
+                        padding_matrix.get(p, i + padding, j + padding, k) = img.get(p, i, j, k);
+                    }
+                }
+            }
+        }
+
+        return ConvLayer::convolution(padding_matrix, filter);
+
+
+    }
 
     /***
      * 捲積
@@ -517,13 +541,15 @@ public:
         return *result;
     }
 
-    Matrix &convolution_back_get_per_picture_d_w(size_t which_picture){
-        Matrix *result = new Matrix(w.shape, 0, true);
+    Matrix &convolution_back_get_per_picture_d_w(size_t which_picture, Matrix &delta){
+        Matrix *result = new Matrix(w.shape, 0);
+//        Matrix *result = new Matrix(w.shape, 0, true);
         Matrix target_x = Matrix::getPictures(x, which_picture, which_picture+1);
         Matrix target_u = Matrix::getPictures(u, which_picture, which_picture+1);
 
-        Matrix u_change(w.shape, 0);
-        u_change = target_u.per_picture_change_shape_3_to_0(w.shape[3]);
+        target_u = target_u * delta;
+
+        Matrix u_change = target_u.per_picture_change_shape_3_to_0(w.shape[3]);
 
         *result = ConvLayer::convolution(target_x, u_change);
 
@@ -531,6 +557,7 @@ public:
     }
 
     ConvLayer(size_t _filter_size, size_t _kernel_size, ActiveFunc *_activeFunc, Optimizer *_optimizer){
+        assert(_kernel_size % 2);
         kernel_size = _kernel_size;
         filter_size = _filter_size;
         active_func = _activeFunc;
@@ -545,56 +572,59 @@ public:
 
 
     Matrix &forward(Matrix &_x, bool is_train) override {
-        if (w.size_1d == -1){
+        x = _x;
+        if (w.size_1d == 0){
             w = *(new Matrix(filter_size, kernel_size, kernel_size, _x.shape[3], 0, true));
             w.random_matrix();
-            grad_w = *(new Matrix(filter_size, kernel_size, kernel_size, _x.shape[3], 0, true));
+            grad_w = *(new Matrix(w.shape, true));
         }
-
         u = ConvLayer::convolution(_x, w, b);
+
         y = active_func->func_forward(u);
+
 
         return y;
     }
 
     Matrix &backward(Matrix &_delta, bool is_train) override {
-        Matrix *result = new Matrix(true);
-
         Matrix my_delta = active_func->func_backward(u) * _delta;
-        Matrix u_delta = my_delta * u;
+//        Matrix u_delta = my_delta * u;
 
         for(size_t i = 0; i < x.shape[0]; i++){
-            Matrix w_change_i = convolution_back_get_per_picture_d_w(i);
-            Matrix x_i = Matrix::getPictures(x, i, i + 1);
-            grad_w = grad_w + ConvLayer::convolution(x_i, w_change_i);
+//            Matrix w_change_i = convolution_back_get_per_picture_d_w(i, my_delta);
+//            Matrix x_i = Matrix::getPictures(x, i, i + 1);
+            Matrix temp = convolution_back_get_per_picture_d_w(i, my_delta);
+            grad_w = grad_w + temp;
         }
-
         grad_w = grad_w / double(x.shape[0]);
 
-        return *result;
+        Matrix rotate_w = w.rotate_180();
+        delta = ConvLayer::convolution(my_delta, rotate_w, w.shape[1] - 1);
+        delta.print_matrix();
+
+        return delta;
     }
 
     void update() override {
-
+        optimizer->gradient_descent(w, b, grad_w, grad_b);
     }
-
 
 };
 
 class FlattenLayer: public Layer{
 public:
     size_t input_shape[4] = {0, 0, 0, 0};
-    size_t output_shape[4] = {0, 0, 0, 0};
+//    size_t output_shape[4] = {0, 0, 0, 0};
     Matrix &forward(Matrix &_x, bool is_train) override {
         Matrix *result = new Matrix(_x, true);
         input_shape[0] = _x.shape[0];
         input_shape[1] = _x.shape[1];
         input_shape[2] = _x.shape[2];
         input_shape[3] = _x.shape[3];
-        output_shape[0] = 1;
-        output_shape[1] = 1;
-        output_shape[2] = _x.shape[0];
-        output_shape[3] = _x.size_1d * _x.shape[0];
+//        output_shape[0] = 1;
+//        output_shape[1] = 1;
+//        output_shape[2] = _x.shape[0];
+//        output_shape[3] = _x.size_1d * _x.shape[0];
         result->reshape(1, 1, _x.shape[0], _x.size_1d * _x.shape[0]);
         return *result;
     }
@@ -623,12 +653,17 @@ public:
 //
 //    ActiveFunc *active_func;
 //    Optimizer *optimizer;
+    size_t output_size;
 
     DenseLayer(size_t input_size, size_t output_size, ActiveFunc *_activeFunc, Optimizer *_optimizer){
-        init(input_size, output_size, _activeFunc, _optimizer);
+        init(output_size, _activeFunc, _optimizer);
     }
 
-    void init(size_t input_size, size_t output_size, ActiveFunc *_activeFunc, Optimizer *_optimizer){
+    DenseLayer(size_t output_size, ActiveFunc *_activeFunc, Optimizer *_optimizer){
+        init(output_size, _activeFunc, _optimizer);
+    }
+
+    void init(size_t input_size, size_t _output_size, ActiveFunc *_activeFunc, Optimizer *_optimizer){
         w = *(new Matrix(input_size, output_size, 0, true));
         w.random_matrix();
         b = *(new Matrix(1, output_size, 0, true));
@@ -637,9 +672,24 @@ public:
         grad_b = *(new Matrix(b.shape[2], b.shape[3], 0, true));
         active_func = _activeFunc;
         optimizer = _optimizer;
+        output_size = _output_size;
+    }
+
+    void init(size_t _output_size, ActiveFunc *_activeFunc, Optimizer *_optimizer){
+        active_func = _activeFunc;
+        optimizer = _optimizer;
+        output_size = _output_size;
     }
 
     Matrix& forward(Matrix& _x, bool is_train) override{
+        if (w.size_1d == 0){
+            w = *(new Matrix(_x.shape[3], output_size, 0, true));
+            w.random_matrix();
+            b = *(new Matrix(1, output_size, 0, true));
+            b.random_matrix();
+            grad_w = *(new Matrix(w.shape[2], w.shape[3], 0, true));
+            grad_b = *(new Matrix(b.shape[2], b.shape[3], 0, true));
+        }
         assert(_x.shape[0] == 1 || _x.shape[1] == 1);
         x = _x;
         u = Matrix::dot(x, w);
@@ -927,15 +977,25 @@ void test_conv(){
             0.3, 0.2, 0.5, 0.3, 0.7, 0.1,
             0.7, 0.2, 0.8, 0.3, 0.9, 0.2
     };
+    double _target[1] = {1};
 
-    Matrix img(_img, 1, 5, 5, 1);
-    Matrix filter(_filter, 2, 3, 3, 1);
-    Matrix u;
+    Matrix img(1, 10, 10, 1, 0);
+    img.set_matrix_1_to_x();
+//    Matrix filter(_filter, 1, 3, 3, 1);
+    Matrix target(1, 2, 0.5);
 
     MyFrame frame(new MSE, -1);
     frame.add(new ConvLayer(1, 3, new Sigmoid(), new SGD(0.3)));
     frame.add(new FlattenLayer());
-    frame.train_one_time(_img);
+    frame.add(new DenseLayer(2, new Sigmoid(), new SGD(0.3)));
+
+    for(size_t i =0; i < 1; i++){
+        frame.train_one_time(img, target);
+    }
+
+//    frame.train(100, img, target);
+
+    frame.show(img, target);
 
 //    img.print_matrix();
 //    filter.print_matrix();

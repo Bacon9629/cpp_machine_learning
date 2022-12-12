@@ -21,13 +21,9 @@ void f_b(){
 
 
 int main(){
-    Matrix a(1, 1, 2);
-    Matrix b(4, 3, 2);
-    b.set_matrix_1_to_x();
-    b.print_matrix();
-    (b / a).print_matrix();
-    (b + a).print_matrix();
-    (b - a).print_matrix();
-    (b * a).print_matrix();
+    Matrix a(5, 5, 0);
+    a.set_matrix_1_to_x();
+    a.print_matrix();
+    a.rotate_180().print_matrix();
     return 0;
 }

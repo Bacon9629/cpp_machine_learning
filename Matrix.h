@@ -22,7 +22,7 @@ private:
     }
 
 public:
-    double *matrix;
+    double *matrix = 0;
     size_t shape[4] = {0, 0, 0, 0};
     size_t index_reflec_1d_[4] = {0, 0, 0, 0};
     size_t size_1d = -1;
@@ -178,7 +178,7 @@ public:
 #ifdef SHOW_MATRIX_PTR
         cout << "free " << this << endl;
 #endif
-        if (matrix != NULL){
+        if (matrix != 0){
             delete []matrix;
         }
     }
@@ -220,6 +220,23 @@ public:
         for (size_t i = 0; i < size_1d; i++){
             matrix[i] = double (i);
         }
+    }
+
+    Matrix& rotate_180(){
+        assert(shape[1] == shape[2]);
+        Matrix *result = new Matrix(shape[0], shape[2], shape[1], shape[3], 0, true);
+        for (size_t i = 0; i < shape[0]; i++){
+            for (size_t row = 0; row < shape[2]; row++){
+                for (size_t col = 0; col < shape[2]; col++){
+                    double *ori = &get(i, shape[1] - 1 - row, shape[2] - 1 - col, 0);
+                    double *target = &result->get(i, row, col, 0);
+                    for (size_t j = 0; j < shape[3]; j++){
+                        *(target + j) = *(ori + j);
+                    }
+                }
+            }
+        }
+        return *result;
     }
 
     double sum(){
@@ -270,7 +287,7 @@ public:
             for (size_t j = 0; j < shape[1]; j++){
                 for (size_t k = 0; k < shape[2]; k++){
                     double a = get(0, j, k, i);
-                    for (size_t l = 0; l < shape[2]; l++){
+                    for (size_t l = 0; l < channel_size; l++){
                         result->get(i, j, k, l) = a;
                     }
                 }
@@ -407,6 +424,11 @@ public:
             _matrix.print_shape();
             assert("shape error");
         }
+
+        if (_matrix.is_cal_result){
+            delete &_matrix;
+        }
+
         return *result;
     }
 
@@ -449,6 +471,11 @@ public:
             _matrix.print_shape();
             assert("shape error");
         }
+
+        if (_matrix.is_cal_result){
+            delete &_matrix;
+        }
+
         return *result;
     }
 
@@ -491,6 +518,11 @@ public:
             _matrix.print_shape();
             assert("shape error");
         }
+
+        if (_matrix.is_cal_result){
+            delete &_matrix;
+        }
+
         return *result;
     }
 
@@ -534,6 +566,10 @@ public:
             assert(false);
         }
 
+        if (_matrix.is_cal_result){
+            delete &_matrix;
+        }
+
         return *result;
     }
 
@@ -543,13 +579,13 @@ public:
             index_reflec_1d_[i] = _matrix.index_reflec_1d_[i];
             size_1d = _matrix.size_1d;
         }
-        if (matrix != NULL){
+        if (matrix != 0){
             delete []matrix;
         }
 
         if (_matrix.is_cal_result){
             matrix = _matrix.matrix;
-            _matrix.matrix = NULL;
+            _matrix.matrix = 0;
             delete &_matrix;
         }else{
             matrix = new double [size_1d];
