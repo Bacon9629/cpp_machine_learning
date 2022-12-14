@@ -47,6 +47,26 @@ public:
         return get(_matrix, 0, 0, row, col);
     }
 
+    /***
+     * for 4 dim matrix
+     * @param _matrix input_matrix
+     * @param padding padding
+     * @return matrix
+     */
+    static Matrix &padding(Matrix &_matrix, size_t padding){
+        Matrix *result = new Matrix(_matrix.shape[0], _matrix.shape[1] + padding * 2, _matrix.shape[2] + padding * 2, _matrix.shape[3], 0, true);
+        for (size_t i = 0; i < _matrix.shape[0]; i++){
+            for (size_t j = 0; j < _matrix.shape[1]; j++){
+                for (size_t k = 0; k < _matrix.shape[2]; k++){
+                    for (size_t l = 0; l < _matrix.shape[3]; l++){
+                        result->get(i, j + padding, k + padding, l) = _matrix.get(i, j, k, l);
+                    }
+                }
+            }
+        }
+        return *result;
+    }
+
     // 取 start 到 end - 1 的row
     inline static Matrix& getPictures(Matrix &_matrix, size_t start_picture, size_t end_picture){
         assert(start_picture < _matrix.shape[0]);
@@ -75,6 +95,20 @@ public:
                 &(Matrix::get(_matrix, start_row, 0)),
                 row_size,
                 _matrix.shape[3], true);
+
+        return *result;
+    }
+
+    static Matrix& get_per_channel(Matrix &x, size_t which_channel){
+        assert(x.shape[3] > which_channel);
+        Matrix* result = new Matrix(x.shape[0], x.shape[1], x.shape[2], 1, 0, true);
+        for (size_t i = 0; i < x.shape[0]; i++){
+            for (size_t j = 0; j < x.shape[0]; j++){
+                for (size_t k = 0; k < x.shape[0]; k++){
+                    result->get(i, j, k, 0) = x.get(i, j, k, which_channel);
+                }
+            }
+        }
 
         return *result;
     }
@@ -226,10 +260,11 @@ public:
     Matrix& rotate_180(){
 //        assert(shape[1] == shape[2]);  // 4D matrix, [img, row, col, channel]
         Matrix *result = new Matrix(shape[0], shape[1], shape[2], shape[3], 0, true);
+        Matrix temp(this->matrix, shape[0], shape[1], shape[2], shape[3],  true);
         for (size_t i = 0; i < shape[0]; i++){
             for (size_t row = 0; row < shape[1]; row++){
                 for (size_t col = 0; col < shape[2]; col++){
-                    double *ori = &get(i, shape[1] - 1 - row, shape[2] - 1 - col, 0);
+                    double *ori = &(temp.get(i, shape[1] - 1 - row, shape[2] - 1 - col, 0));
                     double *target = &result->get(i, row, col, 0);
                     for (size_t j = 0; j < shape[3]; j++){
                         *(target + j) = *(ori + j);
@@ -238,6 +273,17 @@ public:
             }
         }
         return *result;
+    }
+
+    void set_per_channel(Matrix &x, size_t which_channel){
+        assert(x.shape[3] == 1);
+        for (size_t i = 0; i < shape[0]; i++){
+            for (size_t row = 0; row < shape[1]; row++){
+                for (size_t col = 0; col < shape[2]; col++){
+                    get(i, row, col, which_channel) = x.get(i, row, col, 0);
+                }
+            }
+        }
     }
 
     double sum(){
@@ -281,16 +327,13 @@ public:
      * @param channel_size 權重or原始照片的channel size
      * @return 假設原始shape(1, 3, 3, 2)轉換成shape(2, 3, 3, channel_size)
      */
-    Matrix &per_picture_change_shape_3_to_0_for_conv(size_t channel_size){
+    Matrix &per_picture_change_shape_3_to_0_for_conv(){
         assert(shape[0] == 1);
-        Matrix *result = new Matrix(shape[3], shape[1], shape[2], channel_size, 0, true);
+        Matrix *result = new Matrix(shape[3], shape[1], shape[2], 1, 0, true);
         for (size_t i = 0; i < shape[3]; i++){
             for (size_t j = 0; j < shape[1]; j++){
                 for (size_t k = 0; k < shape[2]; k++){
-                    double a = get(0, j, k, i);
-                    for (size_t l = 0; l < channel_size; l++){
-                        result->get(i, j, k, l) = a;
-                    }
+                    result->get(i, j, k, 0) = get(0, j, k, i);
                 }
             }
         }
@@ -299,11 +342,12 @@ public:
 
     Matrix &shape_3_to_0(){
         Matrix *result = new Matrix(shape[3], shape[1], shape[2], shape[0], 0, true);
+        Matrix temp(this->matrix, shape[0], shape[1], shape[2], shape[3]);
         for (size_t i = 0; i < shape[3]; i++){
             for (size_t j = 0; j < shape[1]; j++){
                 for (size_t k = 0; k < shape[2]; k++){
                     for (size_t l = 0; l < shape[0]; l++){
-                        result->get(i, j, k, l) = get(l, j, k, i);
+                        result->get(i, j, k, l) = temp.get(l, j, k, i);
                     }
                 }
             }
@@ -509,6 +553,9 @@ public:
     Matrix& operator* (Matrix &_matrix){
         Matrix *result = calculate_check_need_copy();
         double* result_matrix = result->matrix;
+        if (_matrix.shape[0] != this->shape[0]){
+            cout << endl;
+        }
         assert(_matrix.shape[0] == this->shape[0]);
         assert(_matrix.shape[1] == this->shape[1]);
 

@@ -349,7 +349,6 @@ public:
 
 class ConvLayer: public Layer{
 public:
-    size_t kernel_size, filter_size;
 
     /***
      * 捲積
@@ -360,6 +359,9 @@ public:
     static Matrix &convolution(Matrix &img, Matrix &filter){
         assert(filter.shape[1] < img.shape[1]);
         assert(filter.shape[2] < img.shape[2]);
+        if (filter.shape[3] != img.shape[3]){
+            cout << endl;
+        }
         assert(filter.shape[3] == img.shape[3]);  // filter 與 img 的 channel 要一樣
 //        assert(filter.shape[1] == img.shape[2]);  // filter 必須正方形
 
@@ -503,18 +505,22 @@ public:
 
         return *result;
     }
-    Matrix &convolution_back_get_per_picture_d_w(size_t which_picture, Matrix &delta_u){
+
+    Matrix &convolution_back_get_per_picture_per_channel_d_w(size_t which_picture, size_t which_channel, Matrix &delta_u){
         Matrix *result = new Matrix(w.shape, 0, true);
         Matrix target_x = Matrix::getPictures(x, which_picture, which_picture+1);
-        Matrix target_u = Matrix::getPictures(delta_u, which_picture, which_picture+1);
+        target_x = Matrix::get_per_channel(target_x, which_channel);
 
+        Matrix target_u = Matrix::getPictures(delta_u, which_picture, which_picture+1);
         Matrix u_change;
-        u_change = target_u.per_picture_change_shape_3_to_0_for_conv(w.shape[3]);
+        u_change = target_u.per_picture_change_shape_3_to_0_for_conv();
 
         *result = ConvLayer::convolution(target_x, u_change);
 
         return *result;
     }
+
+    size_t kernel_size, filter_size;
 
     ConvLayer(size_t _filter_size, size_t _kernel_size, ActiveFunc *_activeFunc, Optimizer *_optimizer){
         kernel_size = _kernel_size;
@@ -547,7 +553,7 @@ public:
     }
 
     Matrix &backward(Matrix &_delta, bool is_train) override {
-        Matrix *result = new Matrix(true);
+//        Matrix *result = new Matrix(true);
 
         Matrix my_delta = active_func->func_backward(u) * _delta;
         Matrix u_delta = my_delta * u;
@@ -555,16 +561,24 @@ public:
         Matrix temp(grad_w.shape[3], grad_w.shape[1], grad_w.shape[2], grad_w.shape[0], 0);
 
         for(size_t i = 0; i < x.shape[0]; i++){
-            Matrix w_change_i = convolution_back_get_per_picture_d_w(i, u_delta);
-//            Matrix x_i = Matrix::getPictures(x, i, i + 1);
-//            temp = temp + convolution_back_get_per_picture_d_w(i, u_delta);
-            temp = temp + w_change_i;
-//            grad_w = grad_w + ConvLayer::convolution(x_i, w_change_i);
+            Matrix temp2(temp.shape, 0);
+            for (size_t _channel = 0; _channel < x.shape[3]; _channel++){
+                Matrix w_change_i = convolution_back_get_per_picture_per_channel_d_w(i, _channel, u_delta);
+                Matrix w_change_i_3_to_0 = w_change_i.shape_3_to_0();
+                temp2.set_per_channel(w_change_i_3_to_0, _channel);
+            }
+            temp = temp + temp2;
         }
 
         grad_w = temp.shape_3_to_0() / double(x.shape[0]);
 
-        return *result;
+        Matrix w_0_to_3_rotate = w.shape_3_to_0();
+        w_0_to_3_rotate = w_0_to_3_rotate.rotate_180();
+
+        Matrix padding_delta = Matrix::padding(u_delta, kernel_size-1);
+        delta = ConvLayer::convolution(padding_delta, w_0_to_3_rotate);
+
+        return delta;
     }
 
     void update() override {
@@ -706,42 +720,57 @@ public:
     }
 
     void train_img_input(size_t epoch, Matrix &x, Matrix &target){
+        assert(target.shape[0] == 1);
+        assert(target.shape[1] == 1);
+        assert(target.shape[2] == x.shape[0]);
+        assert(target.shape[3] == layers[layers.size()-1]->y.shape[3]);  // 確認神經網路最終輸出與target的數量是一樣的
         size_t _batch = batch == -1 ? x.shape[0] : batch;
 
         for (size_t i = 0; i < epoch; i++){
             size_t data_left_size = x.shape[0];  // 存著還有幾筆資料需要訓練
-//            train_one_time(x, target);
-//            continue;
 
-            for (size_t j = 0; data_left_size > 0 ; j++){
+            for (size_t j = 0; data_left_size != 0 ; j++){
                 if (data_left_size < _batch){
                     // 如果資料量"不足"填滿一個batch
                     Matrix _x = Matrix::getPictures(x, j * _batch, j * _batch + data_left_size);
-                    Matrix _target = Matrix::getPictures(target, j * _batch, j * _batch + data_left_size);
+                    Matrix _target = Matrix::getRow(target, j * _batch, j * _batch + data_left_size);
 
                     train_one_time(_x, _target);
+
                     data_left_size = 0;
                 }else{
                     // 如果資料量"足夠"填滿一個batch
                     Matrix _x = Matrix::getPictures(x, j * _batch, j * _batch + _batch);
-                    Matrix _target = Matrix::getPictures(target, j * _batch, j * _batch + _batch);
+                    Matrix _target = Matrix::getRow(target, j * _batch, j * _batch + _batch);
 
                     train_one_time(_x, _target);
                     data_left_size -= _batch;
                 }
 
+
             }
         }
     }
 
-    void train(size_t epoch, Matrix &x, Matrix &target){  // 這裡擴充batch size
+    void train(size_t epoch, Matrix &x, Matrix &target, bool img_input = false){  // 這裡擴充batch size
+        if (!img_input){
+            train_img_input(epoch, x, target);
+            return;
+        }
+
+        assert(x.shape[0] == 1 && x.shape[1] == 1);  // 不可輸入圖片
+        assert(target.shape[0] == 1);
+        assert(target.shape[1] == 1);
+        assert(target.shape[2] == x.shape[2]);
+        assert(target.shape[3] == layers[layers.size()-1]->y.shape[3]);  // 確認神經網路最終輸出與target的數量是一樣的
+
         size_t _batch = batch == -1 ? x.shape[2] : batch;
 
         for (size_t i = 0; i < epoch; i++){
             size_t data_left_size = x.shape[2];  // 存著還有幾筆資料需要訓練
 //            train_one_time(x, target);
 //            continue;
-            for (size_t j = 0; data_left_size > 0 ; j++){
+            for (size_t j = 0; data_left_size != 0 ; j++){
                 if (data_left_size < _batch){
                     // 如果資料量"不足"填滿一個batch
                     Matrix _x = Matrix::getRow(x, j * _batch, j * _batch + data_left_size);
@@ -749,6 +778,7 @@ public:
 
                     train_one_time(_x, _target);
                     data_left_size = 0;
+
                 }else{
                     // 如果資料量"足夠"填滿一個batch
                     Matrix _x = Matrix::getRow(x, j * _batch, j * _batch + _batch);
@@ -942,38 +972,25 @@ void test_conv(){
 //    };
 //    double _target[1] = {1};
 
-    Matrix img(1, 10, 10, 1, 0);
+    Matrix img(3, 10, 10, 2, 0);
     img.set_matrix_1_to_x();
     img = img / double(img.size_1d);
-//    Matrix filter(_filter, 1, 3, 3, 1);
 
 
-    Matrix target(1, 2, 0.4);
-    target.set_matrix_1_to_x();
-    target = target / double(target.size_1d);
+    Matrix target(3, 3, 0.4);
 
     MyFrame frame(new MSE, -1);
-//    frame.add(new ConvLayer(3, 3, new Sigmoid(), new SGD(0.2)));
-    frame.add(new ConvLayer(5, 3, new Sigmoid(), new SGD(0.2)));
+    frame.add(new ConvLayer(3, 3, new Sigmoid(), new SGD(0.3)));
+    frame.add(new ConvLayer(5, 3, new Sigmoid(), new SGD(0.3)));
     frame.add(new FlattenLayer());
-    frame.add(new DenseLayer(2, new Sigmoid(), new SGD(0.3)));
-
-//    for(size_t i =0; i < 1; i++){
-//        frame.train_one_time(img, target);
-//    }
+    frame.add(new DenseLayer(3, new Sigmoid(), new SGD(0.3)));
 
     frame.show(img, target);
 
+    frame.train_img_input(500, img, target);
 
-    for(size_t i =0; i < 3000; i++){
-        frame.train_one_time(img, target);
-    }
-
-//    frame.train(100, img, target);
     frame.show(img, target);
 
-//    img.print_matrix();
-//    filter.print_matrix();
 
 }
 
