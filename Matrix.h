@@ -10,6 +10,7 @@
 
 using namespace std;
 
+//template <typename Type>
 class Matrix{
 private:
     Matrix* calculate_check_need_copy(){
@@ -223,10 +224,10 @@ public:
     }
 
     Matrix& rotate_180(){
-        assert(shape[1] == shape[2]);
-        Matrix *result = new Matrix(shape[0], shape[2], shape[1], shape[3], 0, true);
+//        assert(shape[1] == shape[2]);  // 4D matrix, [img, row, col, channel]
+        Matrix *result = new Matrix(shape[0], shape[1], shape[2], shape[3], 0, true);
         for (size_t i = 0; i < shape[0]; i++){
-            for (size_t row = 0; row < shape[2]; row++){
+            for (size_t row = 0; row < shape[1]; row++){
                 for (size_t col = 0; col < shape[2]; col++){
                     double *ori = &get(i, shape[1] - 1 - row, shape[2] - 1 - col, 0);
                     double *target = &result->get(i, row, col, 0);
@@ -276,11 +277,11 @@ public:
 
     /***
      * 將一張照片的shape[3]轉成shape[0]，給de_conv計算用
-     * shape[0]必須 = 0
+     * shape[0]必須 = 1
      * @param channel_size 權重or原始照片的channel size
      * @return 假設原始shape(1, 3, 3, 2)轉換成shape(2, 3, 3, channel_size)
      */
-    Matrix &per_picture_change_shape_3_to_0(size_t channel_size){
+    Matrix &per_picture_change_shape_3_to_0_for_conv(size_t channel_size){
         assert(shape[0] == 1);
         Matrix *result = new Matrix(shape[3], shape[1], shape[2], channel_size, 0, true);
         for (size_t i = 0; i < shape[3]; i++){
@@ -289,6 +290,20 @@ public:
                     double a = get(0, j, k, i);
                     for (size_t l = 0; l < channel_size; l++){
                         result->get(i, j, k, l) = a;
+                    }
+                }
+            }
+        }
+        return *result;
+    }
+
+    Matrix &shape_3_to_0(){
+        Matrix *result = new Matrix(shape[3], shape[1], shape[2], shape[0], 0, true);
+        for (size_t i = 0; i < shape[3]; i++){
+            for (size_t j = 0; j < shape[1]; j++){
+                for (size_t k = 0; k < shape[2]; k++){
+                    for (size_t l = 0; l < shape[0]; l++){
+                        result->get(i, j, k, l) = get(l, j, k, i);
                     }
                 }
             }
@@ -397,6 +412,9 @@ public:
     Matrix& operator+ (Matrix &_matrix){
         Matrix *result = calculate_check_need_copy();
         double* result_matrix = result->matrix;
+        if (_matrix.shape[0] != this->shape[0]){
+            cout << endl;
+        }
         assert(_matrix.shape[0] == this->shape[0]);
         assert(_matrix.shape[1] == this->shape[1]);
 

@@ -21,7 +21,7 @@ void f_b(){
 
 
 int main(){
-    Matrix a(5, 5, 0);
+    Matrix a(1, 4, 5, 1, 0);
     a.set_matrix_1_to_x();
     a.print_matrix();
     a.rotate_180().print_matrix();
