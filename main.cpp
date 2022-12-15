@@ -4,6 +4,7 @@
 #include <cmath>
 #include <cassert>
 #include <vector>
+#include <fstream>
 
 using namespace std;
 
@@ -51,7 +52,7 @@ public:
     }
 
     Matrix& backward(Matrix &y, Matrix &target) override {
-        Matrix *result = new Matrix(y.shape[2], y.shape[3], 0, true);
+        Matrix *result = new Matrix(y.shape, 0, true);
 
         for (size_t i = 0; i< y.shape[2]; i++){
             for (size_t j = 0; j < y.shape[3]; j++){
@@ -79,11 +80,12 @@ public:
                 }
             }
         }
+        result = result / double (y.shape[2]);
         return result;
     }
 
     Matrix& backward(Matrix &y, Matrix &target) override {
-        Matrix *result = new Matrix(y.matrix, y.shape[2], y.shape[3],  true);
+        Matrix *result = new Matrix(y,  true);
         double *result_matrix = result->matrix;
         double *target_matrix = target.matrix;
         for (size_t i = 0; i< result->size_1d; i++){
@@ -110,7 +112,7 @@ public:
 class Relu: public ActiveFunc{
 public:
     Matrix& func_forward(Matrix &x) override {
-        Matrix *result = new Matrix(x.shape[2], x.shape[3], 0, true);
+        Matrix *result = new Matrix(x.shape, 0, true);
         double* result_matrix_pointer = result->matrix;
         double* x_matrix_pointer = x.matrix;
 
@@ -118,18 +120,11 @@ public:
             double temp = x_matrix_pointer[i];
             result_matrix_pointer[i] = temp > 0 ? temp : 0;
         }
-
-//        for (size_t i = 0; i < x.shape[2]; i++){
-//            for (size_t j = 0; j < x.shape[3]; j++){
-//                double temp = x.get(i, j);
-//                result->get(i, j) = temp > 0 ? temp : 0;
-//            }
-//        }
         return *result;
     }
 
     Matrix& func_backward(Matrix &x) override {
-        Matrix *result = new Matrix(x.shape[2], x.shape[3], 0, true);
+        Matrix *result = new Matrix(x.shape, 0, true);
         double* result_matrix_pointer = result->matrix;
         double* x_matrix_pointer = x.matrix;
 
@@ -137,12 +132,6 @@ public:
             double temp = x_matrix_pointer[i];
             result_matrix_pointer[i] = temp > 0 ? 1 : 0;
         }
-
-//        for (size_t i = 0; i < x.shape[2]; i++){
-//            for (size_t j = 0; j < x.shape[3]; j++){
-//                result->get(i, j) = x.get(i, j) > 0 ? 1 : 0;
-//            }
-//        }
         return *result;
     }
 };
@@ -188,7 +177,7 @@ public:
     }
 
     Matrix& func_backward(Matrix &x) override {
-        return *(new Matrix(x.shape[2], x.shape[3], 1, true));
+        return *(new Matrix(x.shape, 1, true));
     }
 };
 
@@ -262,9 +251,9 @@ public:
     void gradient_descent(Matrix &w, Matrix &b, Matrix &grad_w, Matrix &grad_b) override {
 //        last_grad_w =  alpha * grad_w + beta * last_grad_w;
 //        w -= last_grad_w;
-        if (last_grad_w.shape[2] == 0){
-            last_grad_w = *(new Matrix(grad_w.shape[2], grad_w.shape[3], 0, true));
-            last_grad_b = *(new Matrix(grad_b.shape[2], grad_b.shape[3], 0, true));
+        if (last_grad_w.size_1d == 0){
+            last_grad_w = *(new Matrix(grad_w.shape, 0, true));
+            last_grad_b = *(new Matrix(grad_b.shape, 0, true));
         }
 
         last_grad_w = (grad_w * eta) + (last_grad_w * beta);
@@ -300,18 +289,8 @@ public:
 class DropoutLayer:public Layer{
 public:
 
-    double dropout_probability;
-    Matrix dropout_matrix;
-
-    DropoutLayer(size_t input_size, size_t output_size, ActiveFunc *_activeFunc, Optimizer *_optimizer, double _dropout_probability){
-        init(input_size, output_size, _activeFunc, _optimizer);
-        dropout_probability = _dropout_probability;
-    }
-
-    Matrix& construct_random_bool_list(size_t row, size_t col, double probability){
+    static Matrix& construct_random_bool_list(size_t row, size_t col, double probability){
         Matrix *result = new Matrix(row, col, 0, true);
-        double a = 0;
-        double b = 0;
         for(size_t i = 0; i < row; i++){
             for(size_t j = 0; j < col; j++){
                 result->get(i, j) = (double(rand()) / RAND_MAX < probability) ? 0 : 1;
@@ -320,8 +299,14 @@ public:
         return *result;
     }
 
-    void init(size_t input_size, size_t output_size, ActiveFunc *_activeFunc, Optimizer *_optimizer){
+    double dropout_probability;
+    Matrix dropout_matrix;
+
+    DropoutLayer(double _dropout_probability){
+        dropout_probability = _dropout_probability;
     }
+
+
 
     Matrix& forward(Matrix &_x, bool is_train) override {
         x = _x;
@@ -329,7 +314,7 @@ public:
             return x * (1 - dropout_probability);
         }
 
-        dropout_matrix = construct_random_bool_list(x.shape[2], x.shape[3], dropout_probability);
+        dropout_matrix = DropoutLayer::construct_random_bool_list(x.shape[2], x.shape[3], dropout_probability);
         x = x * dropout_matrix;
         return x;
     }
@@ -749,6 +734,10 @@ public:
 
 
             }
+
+
+            cout << "epoch: " << i << endl;
+            show(x, target);
         }
     }
 
@@ -790,6 +779,9 @@ public:
                 }
 
             }
+
+            cout << "epoch: " << i;
+            show(x, target);
         }
     }
 
@@ -815,11 +807,23 @@ public:
             y = layers[i]->forward(y, false);
         }
 
-        cout << "\nlabel: " << endl;
-        target.print_matrix();
+//        cout << "\nlabel: " << endl;
+//        target.print_matrix();
+//
+//        cout << "\nresult: " << endl;
+//        y.print_matrix();
 
-        cout << "\nresult: " << endl;
-        y.print_matrix();
+//        double acc = 0;
+//        Matrix temp = x * target;
+//        for (size_t i = 0; i < y.shape[0]; i++){
+//            double a = 0;
+//            double b = 0;
+//            for (size_t j = 0; j < y.shape[0]; j++){
+//                if (target.get(i, j) == 1){
+//
+//                }
+//            }
+//        }
 
         cout << "\nloss: " << lossFunc->forward(y, target) << endl;
 
@@ -928,7 +932,7 @@ void img_train(){
 
     frame.add(new DenseLayer(25, 32, &relu, new MMT(0.1)));
 //    frame.add(new DenseLayer(64, 32, &softmax, new SGD(0.1)));
-    frame.add(new DropoutLayer(32, 32, &softmax, new MMT(0.001), 0.65));
+    frame.add(new DropoutLayer(0.65));
     frame.add(new DenseLayer(32, 5, &softmax, new MMT(0.1)));
 
     frame.train(6000, x, x_target);
@@ -980,25 +984,98 @@ void test_conv(){
     Matrix target(3, 3, 0.4);
 
     MyFrame frame(new MSE, -1);
-    frame.add(new ConvLayer(3, 3, new Sigmoid(), new SGD(0.3)));
-    frame.add(new ConvLayer(5, 3, new Sigmoid(), new SGD(0.3)));
+    frame.add(new ConvLayer(3, 3, new Sigmoid(), new MMT(0.3)));
+    frame.add(new ConvLayer(5, 3, new Sigmoid(), new MMT(0.3)));
     frame.add(new FlattenLayer());
-    frame.add(new DenseLayer(3, new Sigmoid(), new SGD(0.3)));
+    frame.add(new DenseLayer(3, new Sigmoid(), new MMT(0.3)));
 
     frame.show(img, target);
 
-    frame.train_img_input(500, img, target);
+    frame.train_img_input(20, img, target);
 
     frame.show(img, target);
 
 
 }
 
+Matrix &load_img(string file_name, size_t length){
+    char pix[784];
+    Matrix *img = new Matrix(length, 28, 28, 1, 0, true);
+    ifstream file;
+    file.open(file_name, ios::binary);
+    assert(file.is_open());
+
+// 先拿出前面16bytes不必要的資訊
+    char p[16];
+    file.read(p, 16);
+
+// 讀取影像
+    for (int b = 0; b < length; b++) {
+        file.read(pix, 784);
+        for (int r = 0; r < 28; r++) {
+            for (int c = 0; c < 28; c++) {
+                img->get(b,r, c, 0) = (double)((unsigned char)(pix[r * 28 + c])) / 255;
+            }
+        }
+    }
+
+// 關閉檔案
+    file.close();
+
+    return *img;
+}
+
+Matrix &load_label(const string& file_name, size_t length){
+    char label[1];// 用來暫存二進制資料
+    Matrix *label_matrix = new Matrix(1, 1, length, 10, 0, true);  // 存放label
+    std::ifstream file;
+    file.open(file_name, ios::binary); // 用二進制方式讀取檔案
+    assert(file.is_open());
+
+    // 先拿出前面8bytes不必要的資訊
+    char p[8];
+    file.read(p, 8);
+
+    // 讀取label
+    for (int i = 0; i < length; i++) {
+        file.read(label, 1);
+        label_matrix->get(i, (unsigned char) label[0]) = 1;
+    }
+
+    // 關閉檔案
+    file.close();
+
+    return *label_matrix;
+}
+
+void mnist(){
+    Matrix imgs = load_img("D:\\user\\desktop\\C\\cpp_machine_learning\\train_images.idx3-ubyte", 10000);
+    Matrix labels = load_label("D:\\user\\desktop\\C\\cpp_machine_learning\\train_labels.idx1-ubyte", 10000);
+
+    Matrix imgs_test = load_img("D:\\user\\desktop\\C\\cpp_machine_learning\\train_images.idx3-ubyte", 100);
+    Matrix labels_test = load_label("D:\\user\\desktop\\C\\cpp_machine_learning\\test_labels.idx1-ubyte", 100);
+
+    MyFrame frame(new CrossEntropy_SoftMax, 256);
+    frame.add(new ConvLayer(16, 3, new Relu, new MMT(0.3)));
+    frame.add(new ConvLayer(32, 3, new Relu, new MMT(0.3)));
+    frame.add(new FlattenLayer());
+    frame.add(new DenseLayer(128, new Sigmoid, new MMT(0.3)));
+    frame.add(new DropoutLayer(0.4));
+    frame.add(new DenseLayer(10, new SoftMax_CrossEntropy, new MMT(0.3)));
+
+    frame.show(imgs_test, labels_test);
+
+    frame.train_img_input(3, imgs, labels);
+
+    frame.show(imgs_test, labels_test);
+
+}
+
 int main() {
 //    type_a_train();
 //    img_train();
-    test_conv();
-
+//    test_conv();
+    mnist();
 
     return 0;
 }
