@@ -113,6 +113,31 @@ public:
         return *result;
     }
 
+//    static Matrix& dot(Matrix &matrix_a, Matrix &matrix_b){
+//        size_t row_a = matrix_a.shape[2];
+//        size_t col_a = matrix_a.shape[3];
+//        size_t row_b = matrix_b.shape[2];
+//        size_t col_b = matrix_b.shape[3];
+//
+//        assert(col_a == row_b);
+//
+//        const size_t row_result = row_a;
+//        const size_t col_result = col_b;
+//        Matrix *result = new Matrix(row_result, col_result, 0, true);
+//
+//        for (int r = 0; r < row_result; r++) {
+//            for (int c = 0; c < col_result; c++) {
+//                // 指定在result內的哪個位置
+//                // 接下來依照指定的result位置取出a、b的值來做計算
+//                for (int i = 0; i < col_a; i++) {
+//                    result->get(r, c) += matrix_a.get(r, i) * matrix_b.get(i, c);
+//                }
+//            }
+//        }
+//        return *result;
+//    }
+
+
     static Matrix& dot(Matrix &matrix_a, Matrix &matrix_b){
         size_t row_a = matrix_a.shape[2];
         size_t col_a = matrix_a.shape[3];
@@ -121,21 +146,58 @@ public:
 
         assert(col_a == row_b);
 
-        const size_t row_result = row_a;
-        const size_t col_result = col_b;
-        Matrix *result = new Matrix(row_result, col_result, 0, true);
+        Matrix *result = new Matrix(row_a, col_b, 0, true);
+        Matrix new_b(col_b, row_b, 0);
 
-        for (int r = 0; r < row_result; r++) {
-            for (int c = 0; c < col_result; c++) {
-                // 指定在result內的哪個位置
-                // 接下來依照指定的result位置取出a、b的值來做計算
-                for (int i = 0; i < col_a; i++) {
-                    result->get(r, c) += matrix_a.get(r, i) * matrix_b.get(i, c);
-                }
+
+        double *result_point = result->matrix;
+        double *b_point = matrix_b.matrix;
+        double *a_point = matrix_a.matrix;
+        double *new_b_point = new_b.matrix;
+
+        double *temp_b(b_point), *temp_new_b;
+        for (size_t j=0;j<row_b;j++){
+            temp_new_b = new_b_point + j;
+            for (size_t i=0;i<col_b;i++){
+                *(temp_new_b) = *(temp_b++);
+                temp_new_b += row_b;
             }
         }
+
+
+        a_point = matrix_a.matrix;
+        new_b_point = new_b.matrix;
+
+        double *start_a_point = a_point;
+        double *end_end_a_point = a_point + matrix_a.size_1d;
+        double *end_end_new_b_point = new_b_point + new_b.size_1d;
+
+        double temp = 0;
+//        register double temp = 0;
+
+        do{
+
+            do{
+                a_point = start_a_point;
+
+                for (size_t i = 0; i < row_b; ++i){
+                    temp += *(a_point++) * *(new_b_point++);
+                }
+
+                *(result_point++) = temp;
+                temp = 0;
+
+            }while(new_b_point != end_end_new_b_point);
+
+        start_a_point = a_point;
+        new_b_point = new_b.matrix;
+
+        }while(a_point != end_end_a_point);
+
+
         return *result;
     }
+
 
     inline static Matrix& transpose(Matrix &_matrix) {
         Matrix *result = new Matrix(_matrix.shape[3], _matrix.shape[2], 0, true);
