@@ -141,7 +141,7 @@ public:
 //    }
 
 
-    static Matrix& dot(Matrix &matrix_a, Matrix &matrix_b){
+    static Matrix& dot2(Matrix &matrix_a, Matrix &matrix_b){
         size_t row_a = matrix_a.shape[2];
         size_t col_a = matrix_a.shape[3];
         size_t row_b = matrix_b.shape[2];
@@ -226,7 +226,7 @@ public:
         }while(a != end_end_a_point);
     }
 
-    static Matrix& dot2(Matrix &matrix_a, Matrix &matrix_b){
+    static Matrix& dot(Matrix &matrix_a, Matrix &matrix_b){
         size_t row_a = matrix_a.shape[2];
         size_t col_a = matrix_a.shape[3];
         size_t row_b = matrix_b.shape[2];
@@ -256,11 +256,11 @@ public:
         a_point = matrix_a.matrix;
         new_b_point = new_b.matrix;
 
-        double *start_a_point = a_point;
-        double *end_end_a_point = a_point + matrix_a.size_1d;
-        double *end_end_new_b_point = new_b_point + new_b.size_1d;
-
-        double temp = 0;
+//        double *start_a_point = a_point;
+//        double *end_end_a_point = a_point + matrix_a.size_1d;
+//        double *end_end_new_b_point = new_b_point + new_b.size_1d;
+//
+//        double temp = 0;
 
         size_t per_thread_a_row_size = size_t(row_a / MAX_THREAD);
         size_t remain_row_size = size_t(row_a % MAX_THREAD);
