@@ -4,9 +4,12 @@
 #ifndef AI_CLASS_MATRIX_H
 #define AI_CLASS_MATRIX_H
 
+#define MAX_THREAD 8
+
 #include <iostream>
 #include <cmath>
 #include <cassert>
+#include <thread>
 
 using namespace std;
 
@@ -197,6 +200,114 @@ public:
 
         return *result;
     }
+
+
+    static void thread_mdot_job(double *target, double *a, double *b, size_t a_row, size_t b_size_1d, size_t a_b_col){
+        double *start_a_point(a), *end_end_a_point(a + a_row * a_b_col), *start_start_b_point(b), *end_end_b_point(b + b_size_1d);
+        double temp = 0;
+
+        do{
+
+            do{
+                a = start_a_point;
+
+                for (size_t i = 0; i < a_b_col; ++i){
+                    temp += *(a++) * *(b++);
+                }
+
+                *(target++) = temp;
+                temp = 0;
+
+            }while(b != end_end_b_point);
+
+            start_a_point = a;
+            b = start_start_b_point;
+
+        }while(a != end_end_a_point);
+    }
+
+    static Matrix& dot2(Matrix &matrix_a, Matrix &matrix_b){
+        size_t row_a = matrix_a.shape[2];
+        size_t col_a = matrix_a.shape[3];
+        size_t row_b = matrix_b.shape[2];
+        size_t col_b = matrix_b.shape[3];
+
+        assert(col_a == row_b);
+
+        Matrix *result = new Matrix(row_a, col_b, 0, true);
+        Matrix new_b(col_b, row_b, 0);
+
+
+        double *result_point = result->matrix;
+        double *b_point = matrix_b.matrix;
+        double *a_point = matrix_a.matrix;
+        double *new_b_point = new_b.matrix;
+
+        double *temp_b(b_point), *temp_new_b;
+        for (size_t j=0;j<row_b;j++){
+            temp_new_b = new_b_point + j;
+            for (size_t i=0;i<col_b;i++){
+                *(temp_new_b) = *(temp_b++);
+                temp_new_b += row_b;
+            }
+        }
+
+
+        a_point = matrix_a.matrix;
+        new_b_point = new_b.matrix;
+
+        double *start_a_point = a_point;
+        double *end_end_a_point = a_point + matrix_a.size_1d;
+        double *end_end_new_b_point = new_b_point + new_b.size_1d;
+
+        double temp = 0;
+
+        size_t per_thread_a_row_size = size_t(row_a / MAX_THREAD);
+        size_t remain_row_size = size_t(row_a % MAX_THREAD);
+
+        thread *thread_array = new thread[MAX_THREAD];
+
+        for (size_t i = 0; i < MAX_THREAD; i++){
+//            thread_mdot_job(result_point, a_point, new_b_point, per_thread_a_row_size, new_b.size_1d, col_a);
+            if (remain_row_size > 0){
+                thread_array[i] = thread(thread_mdot_job, result_point, a_point, new_b_point, per_thread_a_row_size + 1, new_b.size_1d, col_a);
+                result_point += (per_thread_a_row_size + 1) * col_b;
+                a_point += (per_thread_a_row_size + 1) * col_a;
+                remain_row_size -= 1;
+            }else{
+                thread_array[i] = thread(thread_mdot_job, result_point, a_point, new_b_point, per_thread_a_row_size, new_b.size_1d, col_a);
+                result_point += per_thread_a_row_size * col_b;
+                a_point += per_thread_a_row_size * col_a;
+            }
+//            cout << remain_row_size << endl;
+
+        }
+
+        for (size_t i = 0; i < MAX_THREAD; i++){
+            thread_array[i].join();
+        }
+
+//        while(a_point != end_end_a_point) {
+//            start_a_point = a_point;
+//            new_b_point = new_b.matrix;
+//            do{
+//                a_point = start_a_point;
+//
+//                for (size_t i = 0; i < row_b; ++i){
+//                    temp += *(a_point++) * *(new_b_point++);
+//                }
+//
+//                *(result_point++) = temp;
+//                temp = 0;
+//
+//            }while(new_b_point != end_end_new_b_point);
+//
+//        };
+
+        delete[] thread_array;
+        return *result;
+    }
+
 
 
     inline static Matrix& transpose(Matrix &_matrix) {
