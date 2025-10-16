@@ -6,6 +6,9 @@
 
 以下是該框架的程式碼架構圖：
 
+<img width="3856" height="684" alt="image" src="https://github.com/user-attachments/assets/c25d2d1f-f9b1-4b73-9d38-7d7c28454a9d" />
+
+
 ```mermaid
 graph TD;
     A[MyFrame] -->|add| B[Layer]
